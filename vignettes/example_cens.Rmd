@@ -1,0 +1,184 @@
+---
+title: "Censored Response Examples"
+author: "MK"
+date: "2017-02-27, `r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    fig_caption: yes
+vignette: >
+  %\VignetteIndexEntry{Censored Response Examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE, message=FALSE}
+library(dplyr)
+devtools::dev_mode(on = TRUE)
+## knitr package options
+knitr::opts_knit$set(verbose = FALSE)
+options(digits = 3L)
+
+library(survival)
+library(lme4cens)
+library(microbenchmark)
+
+data("Affairs", package = "lme4cens")
+
+VERBOSE <- 0L
+```
+
+We demonstrate examples for regression analysis for censored observations.
+
+## Censored observations in the `survival`-package
+`Surv`-objects are used to hold a response value and its status information.
+You provide a `time` and an `event` column. If `event` is missing `Surv` assumes that all subjects have an event.
+It is safest to use logical coding for the `event`-column as the software does not have to guess if 0/1 or 1/2 was used.
+
+A `type`-parameter lets you specify which type of censoring is used:
+
+* `right` censoring means right-censoring (e.g. the unobserved value is greater (right) than `time`. It is default type when there is no `time2` and `event` is _not_ a factor.
+* `left` censoring means left-censoring (e.g. the unobserved value is smaller (left) than `time`).
+* `interval` for interval censorings.
+    * `event=0` indicates right-censoring,
+    * `event=2` indicates left-censoring.
+    * `event=3` for interval-censoring. Only then it uses the `time2` information.
+* `interval2` for interval censorings. All observations are considered as interval-censored observations and `time2` is always used, e.g.
+    * (-Inf, t) for left-censored
+    * (t,t) for exact observations
+    * (t, Inf) for right-censored
+    * (t~1~, t~2~) for interval-censored
+To mark infinity, you can use `Inf` or `NA`. `type='interval2'` is easier to code for, internally the stored type of `interval2` is still `interval`.
+
+`Surv`-objects are implemented as a matrix.
+
+## Exponential distribution
+We generate random data (event and independently censoring) from a Weibull distribution.
+The left-censoring does not allow for an easy analytic solution. Hence, we do an own numeric likelihood maximization.
+
+```{r expLeftCens}
+set.seed(123L)
+N <- 230L
+λ <- 1.8
+
+ex_exp_lCens <- data_frame_(list(
+  X = ~ rweibull(n = N, shape = 1L, scale = 1/λ),
+  Cl = ~ rweibull(n = N, shape = 1.2, scale = 1/λ-.3), # shorter mean time than for response X
+  T = ~ pmax(X, Cl),
+  status = ~ as.numeric(X >= Cl)
+))
+
+
+log1mexp <- function(x){
+  stopifnot( x < 0L, is.numeric(x) )
+  
+  log1pBranch <- x < -log(2)
+  ##y <- numeric(length(x))
+  x[log1pBranch] <- log1p(-exp(x[log1pBranch]))
+  x[!log1pBranch] <- log(-expm1(x[!log1pBranch]))
+  
+  x
+}
+
+# factory method for negative log-likelihood function
+negLogLik <- function(data){
+  stopifnot( is.data.frame(data), all(c("T", "status") %in% names(data)) )
+  
+  nbrEvents <- sum(data$status)
+  eventIdx <- data$status == 1L
+  
+  function(l)
+    - nbrEvents * log(l) + l * sum(data$T[eventIdx]) - sum(log1mexp(-l * data$T[!eventIdx]))
+}
+
+
+optimize(negLogLik(data = ex_exp_lCens),
+         interval = c(0, 10))
+```
+
+The same result can be achieved via `survival::survreg`:
+The linear predictor η is transformed to λ via 1/exp(-η).
+
+```{r expLeftCens_survreg}
+survreg(Surv(T, status, type = "left") ~ 1, dist = "exp",
+        data = ex_exp_lCens)
+```
+
+
+## Linear Regression with censored observations: Tobit-model
+Tobi moodel uses normal error
+```{r ex1_lmcens_affairs}
+fm <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating, data = Affairs)
+
+summary(fm)
+```
+
+
+
+### With weights
+
+We explicitly give higher weight to cases with positive religiousness and positive number of affairs.
+The resulting coefficient for `religiousness` changes accordingly.
+
+```{r ex1_lmcens_affairs_w}
+
+wPos <- with(Affairs, which(affairs > 1 & religiousness > 2))
+w <- rep(1L, 601)
+w[wPos] <- 2.5
+
+
+fmw <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+              weights = w, data = Affairs)
+summary(fmw)
+```
+
+
+
+
+
+## Mixed Linear Models with censored observations
+
+We use a censored version of the `sleepstudy`-data, by applying the information in column `event3` for left- and right-censored measurements of reaction time.
+`event3` uses fixed boundaries when left- and right-censoring occurs.
+
+```{r ex2_sleepstudy2_lme4cens}
+lFormula(Surv(Reaction, time2 = Reaction, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, REML=FALSE) %>% 
+  append(list(verbose=VERBOSE)) %>%
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  
+  myDevFun_f
+
+# Gauss-Hermite quadrature
+lFormula(Surv(Reaction, time2 = Reaction, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, REML=FALSE) %>% 
+  append(list(verbose=VERBOSE, quadrature = "gh")) %>%
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  
+  myDevFun_gh_f
+
+
+## optimize function
+paramS <- c(260, 5, 3, 2)
+
+paramEst <- optim(par = paramS, fn = myDevFun_gh_f)
+```
+
+We compare it with the results of `censReg` on the same data.
+
+```{r ex2_sleepstudy2_censReg}
+library(censReg)
+sleepstudy2 %>% 
+  dplyr::mutate_(Reaction = ~ pmin(pmax(Reaction, 212), 350))  %>% 
+  plm::pdata.frame(index = c("Subject", "Days")) %>% 
+  censReg(Reaction ~ as.numeric(Days), left = 212, right = 350, start = paramS, data = .)
+```
+
+
+### Benchmarking Gauß-Hermite vs Standard numeric integration 
+```{r benchm, cache=TRUE}
+mbObj <- microbenchmark(optim(par = paramS, fn = myDevFun_f),
+               optim(par = paramS, fn = myDevFun_gh_f),
+               times = 5L)
+##saveRDS(mbObj, file = "~/benchm_ghInt_rInt.rds")
+mbObj
+```
+

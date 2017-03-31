@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="author" content="MK" />
+
+<meta name="date" content="2017-03-27" />
+
+<title>Example analyses</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+</style>
+
+
+
+<link href="data:text/css;charset=utf-8,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23header%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%20code%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" rel="stylesheet" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Example analyses</h1>
+<h4 class="author"><em>MK</em></h4>
+<h4 class="date"><em>2017-03-27</em></h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#random-intercept-model">Random intercept model</a></li>
+<li><a href="#random-intercept-slope-model">Random intercept-slope model</a></li>
+<li><a href="#crossed-random-effects">Crossed random effects</a></li>
+<li><a href="#nested-random-effects">Nested random effects</a></li>
+</ul>
+</div>
+
+<p>We test our linear mixed model R-routines with some small examples. We use a subset of the infamous <code>sleepstudy</code>-data to fit simple linear mixed models.</p>
+<div id="random-intercept-model" class="section level3">
+<h3>Random intercept model</h3>
+<p>We basically have a single parameter <span class="math inline">\(\theta\)</span> that corresponds to square of the between-subject variance.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">lFormula</span>(Reaction ~<span class="st"> </span>Days +<span class="st"> </span>(<span class="dv">1</span>|Subject), <span class="dt">data =</span> sleepstudy2, <span class="dt">REML=</span>T) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">append</span>(<span class="kw">list</span>(<span class="dt">verbose=</span>VERBOSE)) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">do.call</span>(mkLmerDevfun_R, .) -&gt;
+<span class="st">  </span>
+<span class="st">  </span>myDevFun_f
+
+<span class="co"># one-dimensional minimization on theta-parameter</span>
+optRes &lt;-<span class="st"> </span><span class="kw">optimize</span>(myDevFun_f, <span class="dt">interval =</span> <span class="kw">c</span>(<span class="fl">0.01</span>, <span class="dv">15</span>))
+
+theta_h &lt;-<span class="st"> </span>optRes$minimum
+<span class="kw">attributes</span>(optRes$objective)</code></pre></div>
+<pre><code>## $beta
+## [1] 258.21   6.99
+## 
+## $b
+## [1] -73.5  19.5  26.1  27.8
+## 
+## $resVar
+## [1] 322</code></pre>
+<p>The optimization routine gives <span class="math inline">\(\theta = 2.753\)</span> which corresponds to a scaled between-subject variance of 7.581. The unscaled between-subject variance is estimated as 2444.206.</p>
+<p>We compare it with the output of <code>lme4</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(fm &lt;-<span class="st"> </span><span class="kw">lmer</span>(Reaction ~<span class="st"> </span>Days +<span class="st"> </span>(<span class="dv">1</span>|Subject), <span class="dt">data =</span> sleepstudy2, <span class="dt">REML=</span>T))</code></pre></div>
+<pre><code>## Linear mixed model fit by REML ['lmerMod']
+## Formula: Reaction ~ Days + (1 | Subject)
+##    Data: sleepstudy2
+## 
+## REML criterion at convergence: 350
+## 
+## Scaled residuals: 
+##    Min     1Q Median     3Q    Max 
+## -2.222 -0.756 -0.006  0.570  2.116 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  Subject  (Intercept) 2444     49.4    
+##  Residual              322     18.0    
+## Number of obs: 40, groups:  Subject, 4
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)  258.214     25.276   10.22
+## Days           6.992      0.988    7.07
+## 
+## Correlation of Fixed Effects:
+##      (Intr)
+## Days -0.176</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ranef</span>(fm)</code></pre></div>
+<pre><code>## $Subject
+##     (Intercept)
+## 309       -73.5
+## 331        19.5
+## 333        26.1
+## 372        27.8</code></pre>
+<div id="with-weighting" class="section level4">
+<h4>With weighting</h4>
+<p>We apply an arbitary weighting to the observations.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">w_sleepstudy2 &lt;-<span class="st"> </span><span class="kw">rep</span>(<span class="kw">c</span>(<span class="kw">rep</span>(<span class="dv">2</span>,<span class="dv">3</span>), <span class="kw">rep</span>(<span class="dv">1</span>,<span class="dv">7</span>)), <span class="dv">4</span>)
+<span class="kw">stopifnot</span>( <span class="kw">length</span>(w_sleepstudy2) ==<span class="st"> </span><span class="kw">NROW</span>(sleepstudy2) )
+
+<span class="kw">lFormula</span>(Reaction ~<span class="st"> </span>Days +<span class="st"> </span>(<span class="dv">1</span>|Subject),
+         <span class="dt">weights =</span> w_sleepstudy2, <span class="dt">data =</span> sleepstudy2) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">append</span>(<span class="dt">values =</span> <span class="kw">list</span>(<span class="dt">verbose=</span>VERBOSE)) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">do.call</span>(mkLmerDevfun_R, .) -&gt;
+<span class="st">  </span>
+<span class="st">  </span>myDevFun_fw
+
+
+optRes &lt;-<span class="st"> </span><span class="kw">optimize</span>(myDevFun_fw, <span class="dt">interval =</span> <span class="kw">c</span>(<span class="fl">0.01</span>, <span class="dv">19</span>))
+theta_h &lt;-<span class="st"> </span>optRes$minimum
+
+<span class="kw">attributes</span>(optRes$objective)</code></pre></div>
+<pre><code>## $beta
+## [1] 259.11   6.82
+## 
+## $b
+## [1] -69.2  20.7  24.0  24.5
+## 
+## $resVar
+## [1] 398</code></pre>
+<p>The optimization routine gives <span class="math inline">\(\theta = 2.33\)</span> which corresponds to a scaled between-subject variance of 5.43. The unscaled between-subject variance is estimated as 2161.985.</p>
+<p>We compare it with the output of <code>lme4</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">fm &lt;-<span class="st"> </span><span class="kw">lmer</span>(Reaction ~<span class="st"> </span>Days +<span class="st"> </span>(<span class="dv">1</span>|Subject),
+            <span class="dt">weights =</span> w_sleepstudy2, 
+             <span class="dt">data =</span> sleepstudy2, <span class="dt">REML=</span>T)
+<span class="kw">ranef</span>(fm)</code></pre></div>
+<pre><code>## $Subject
+##     (Intercept)
+## 309       -69.2
+## 331        20.7
+## 333        24.0
+## 372        24.5</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(fm)</code></pre></div>
+<pre><code>## Linear mixed model fit by REML ['lmerMod']
+## Formula: Reaction ~ Days + (1 | Subject)
+##    Data: sleepstudy2
+## Weights: w_sleepstudy2
+## 
+## REML criterion at convergence: 350
+## 
+## Scaled residuals: 
+##    Min     1Q Median     3Q    Max 
+## -2.037 -0.741 -0.001  0.593  2.328 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  Subject  (Intercept) 2162     46.5    
+##  Residual              398     20.0    
+## Number of obs: 40, groups:  Subject, 4
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)  259.105     23.668   10.95
+## Days           6.821      0.939    7.26
+## 
+## Correlation of Fixed Effects:
+##      (Intr)
+## Days -0.147</code></pre>
+</div>
+</div>
+<div id="random-intercept-slope-model" class="section level3">
+<h3>Random intercept-slope model</h3>
+<p>We have <span class="math inline">\(k=1\)</span> random-effect factor with <span class="math inline">\(l_1 = 4\)</span> levels and <span class="math inline">\(p_1 = 2\)</span> columns (intercept and <code>Days</code>). Here, <span class="math inline">\(\theta\)</span> is a three-dimensional parameter.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">lFormula</span>(Reaction ~<span class="st"> </span>Days +<span class="st"> </span>(Days|Subject), <span class="dt">data =</span> sleepstudy2, <span class="dt">REML=</span>T) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">append</span>(<span class="dt">values =</span> <span class="kw">list</span>(<span class="dt">verbose=</span>VERBOSE)) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">do.call</span>(mkLmerDevfun_R, .) -&gt;
+<span class="st">  </span>
+<span class="st">  </span>myDevFun_f
+
+<span class="co"># three-dimensional minimization of theta-parameter</span>
+optRes &lt;-<span class="st"> </span><span class="kw">optim</span>(<span class="dt">par =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>), <span class="dt">fn =</span> myDevFun_f)
+
+theta_h &lt;-<span class="st"> </span>optRes$par
+
+modelParamEstim &lt;-<span class="st"> </span><span class="kw">attributes</span>(<span class="kw">myDevFun_f</span>(<span class="dt">theta =</span> theta_h))
+modelParamEstim</code></pre></div>
+<pre><code>## $beta
+## [1] 258.21   6.99
+## 
+## $b
+## [1] -51.8066  -4.8627  19.0431  -0.0829  17.5972   1.9450  15.1662   3.0005
+## 
+## $resVar
+## [1] 228</code></pre>
+<p>The optimization routine gives <span class="math inline">\(\theta = ( 2.331, 0.198, -0.14 )\)</span> which builds to the relative covariance factor:</p>
+<pre><code>## 2 x 2 sparse Matrix of class &quot;dgCMatrix&quot;
+##                 
+## [1,] 2.331  .   
+## [2,] 0.198 -0.14</code></pre>
+<p>The estimates on the diagonal of the relative covariance factor are by convention taken as absolute value, the sign does not matter for the resulting estimated covariance-matrix <span class="math inline">\(\Sigma_\theta\)</span> of the random-effects vector B. It is <span class="math inline">\(\Sigma_\theta = \sigma^2 \Lambda_\theta \Lambda_\theta^T\)</span>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">modelParamEstim[[<span class="st">&quot;resVar&quot;</span>]] *<span class="st"> </span>Matrix::<span class="kw">tcrossprod</span>(relCovarFactor)</code></pre></div>
+<pre><code>## 2 x 2 sparse Matrix of class &quot;dsCMatrix&quot;
+##                
+## [1,] 1237 105.2
+## [2,]  105  13.4</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">cov2cor</span>(modelParamEstim[[<span class="st">&quot;resVar&quot;</span>]] *<span class="st"> </span>Matrix::<span class="kw">tcrossprod</span>(relCovarFactor))</code></pre></div>
+<pre><code>## 2 x 2 sparse Matrix of class &quot;dsCMatrix&quot;
+##                 
+## [1,] 1.000 0.817
+## [2,] 0.817 1.000</code></pre>
+<p>We compare it with the output of <code>lme4</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(fm &lt;-<span class="st"> </span><span class="kw">lmer</span>(Reaction ~<span class="st"> </span>Days +<span class="st"> </span>(Days|Subject),
+                   <span class="dt">data =</span> sleepstudy2, <span class="dt">REML=</span>T))</code></pre></div>
+<pre><code>## Linear mixed model fit by REML ['lmerMod']
+## Formula: Reaction ~ Days + (Days | Subject)
+##    Data: sleepstudy2
+## 
+## REML criterion at convergence: 340
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -2.5709 -0.4858  0.0558  0.6287  2.1308 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev. Corr
+##  Subject  (Intercept) 1236.0   35.16        
+##           Days          13.4    3.66    0.82
+##  Residual              227.6   15.09        
+## Number of obs: 40, groups:  Subject, 4
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)   258.21      18.13   14.24
+## Days            6.99       2.01    3.48
+## 
+## Correlation of Fixed Effects:
+##      (Intr)
+## Days 0.636</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ranef</span>(fm)</code></pre></div>
+<pre><code>## $Subject
+##     (Intercept)    Days
+## 309       -51.8 -4.8620
+## 331        19.0 -0.0834
+## 333        17.6  1.9448
+## 372        15.2  3.0005</code></pre>
+</div>
+<div id="crossed-random-effects" class="section level3">
+<h3>Crossed random effects</h3>
+<p>We use the <code>Penicillin</code>-data from <code>lme4</code>-package. The effect of six different penicillin samples is measured as the <code>diameter</code> of the zone of inhibition of bacteria growth. Six measurements are done on a single plate that acts like a blocking factor. We have a randomized complete block design (RCBD), i.e. each sample is measured exactly once on each plate.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">data</span>(<span class="st">&quot;Penicillin&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;lme4&quot;</span>)
+<span class="kw">lFormula</span>(diameter ~<span class="st"> </span>(<span class="dv">1</span>|plate) +<span class="st"> </span>(<span class="dv">1</span>|sample), <span class="dt">data =</span> Penicillin, <span class="dt">REML =</span> <span class="ot">TRUE</span>) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">append</span>(<span class="kw">list</span>(<span class="dt">verbose=</span>VERBOSE)) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">do.call</span>(mkLmerDevfun_R, .) -&gt;
+<span class="st">  </span>
+<span class="st">  </span>myDevFun_f
+
+
+optRes &lt;-<span class="st"> </span><span class="kw">optim</span>(<span class="dt">par =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="dt">fn =</span> myDevFun_f)
+
+theta_h &lt;-<span class="st"> </span>optRes$par
+
+<span class="co"># evaluate the objective-function at the optimal value</span>
+modelParamEstim &lt;-<span class="st"> </span><span class="kw">attributes</span>(<span class="kw">myDevFun_f</span>(<span class="dt">theta =</span> theta_h))
+modelParamEstim</code></pre></div>
+<pre><code>## $beta
+## [1] 23
+## 
+## $b
+##  [1]  0.8045  0.8045  0.1817  0.3374  0.0260 -0.4412 -1.3755  0.8045
+##  [9] -0.7526 -0.7526  0.9602  0.4931  1.4274  0.4931  0.9602  0.0260
+## [17] -0.2855 -0.2855 -1.3755  0.9602 -0.9083 -0.2855 -0.5969 -1.2198
+## [25]  2.1871 -1.0105  1.9379 -0.0969 -0.0138 -3.0037
+## 
+## $resVar
+## [1] 0.302</code></pre>
+<p>The optimization routine gives <span class="math inline">\(\theta = ( 1.539, 3.512 )\)</span> which corresponds to two scaled between-subject variance of <span class="math inline">\((2.37, 12.333)\)</span>. The unscaled between-subject variances for the two random effects are estimated as <span class="math inline">\((0.717, 3.73)\)</span>.</p>
+<p>We compare it with the standard <code>lme4</code>-output of the same model specification:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(fm &lt;-<span class="st"> </span><span class="kw">lmer</span>(diameter ~<span class="st"> </span>(<span class="dv">1</span>|plate) +<span class="st"> </span>(<span class="dv">1</span>|sample), <span class="dt">data =</span> Penicillin, <span class="dt">REML =</span> <span class="ot">TRUE</span>))</code></pre></div>
+<pre><code>## Linear mixed model fit by REML ['lmerMod']
+## Formula: diameter ~ (1 | plate) + (1 | sample)
+##    Data: Penicillin
+## 
+## REML criterion at convergence: 331
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -2.0792 -0.6714  0.0629  0.5838  2.9796 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  plate    (Intercept) 0.717    0.847   
+##  sample   (Intercept) 3.731    1.932   
+##  Residual             0.302    0.550   
+## Number of obs: 144, groups:  plate, 24; sample, 6
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)   22.972      0.809    28.4</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ranef</span>(fm)</code></pre></div>
+<pre><code>## $plate
+##   (Intercept)
+## a       0.805
+## b       0.805
+## c       0.182
+## d       0.337
+## e       0.026
+## f      -0.441
+## g      -1.376
+## h       0.805
+## i      -0.753
+## j      -0.753
+## k       0.960
+## l       0.493
+## m       1.427
+## n       0.493
+## o       0.960
+## p       0.026
+## q      -0.285
+## r      -0.285
+## s      -1.376
+## t       0.960
+## u      -0.908
+## v      -0.285
+## w      -0.597
+## x      -1.220
+## 
+## $sample
+##   (Intercept)
+## A      2.1871
+## B     -1.0105
+## C      1.9379
+## D     -0.0969
+## E     -0.0138
+## F     -3.0037</code></pre>
+</div>
+<div id="nested-random-effects" class="section level3">
+<h3>Nested random effects</h3>
+<p>We use a dataset with a response (<code>strength</code>) which depends on <span class="math inline">\(k=2\)</span> different factors with simple (<span class="math inline">\(p_1 = p_2 = 1\)</span>) random effects:</p>
+<ul>
+<li>batch effect</li>
+<li>cask effect within batch</li>
+</ul>
+<p>Hence, <span class="math inline">\(\theta\)</span> consists of two parameters.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">lFormula</span>(strength ~<span class="st"> </span>(<span class="dv">1</span>|batch/cask), <span class="dt">data =</span> Pastes, <span class="dt">REML=</span>T) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">append</span>(<span class="dt">values =</span> <span class="kw">list</span>(<span class="dt">verbose=</span>VERBOSE)) %&gt;%<span class="st"> </span>
+<span class="st">  </span><span class="kw">do.call</span>(mkLmerDevfun_R, .) -&gt;
+<span class="st">  </span>
+<span class="st">  </span>myDevFun_f
+
+
+optRes &lt;-<span class="st"> </span><span class="kw">optim</span>(<span class="dt">par =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">1</span>), <span class="dt">fn =</span> myDevFun_f)
+
+theta_h &lt;-<span class="st"> </span>optRes$par
+
+modelParamEstim &lt;-<span class="st"> </span><span class="kw">attributes</span>(<span class="kw">myDevFun_f</span>(<span class="dt">theta =</span> theta_h))
+modelParamEstim</code></pre></div>
+<pre><code>## $beta
+## [1] 60.1
+## 
+## $b
+##  [1]  1.7761  0.8832 -2.5710 -3.0531 -3.3202  3.5982  2.4534 -1.7877
+##  [9] -4.5748 -0.6946  0.3340 -2.4816  2.6204 -2.0917 -3.9450 -1.6413
+## [17] -0.1422  4.2690  4.2698 -0.3101  1.9683  0.2102  3.6298  4.4937
+## [25] -0.3880 -0.1511 -2.5937  3.1634 -2.2194 -1.7040  0.7992 -0.2720
+## [33]  0.7210 -0.1276 -1.4998  0.3539 -0.0554  1.1062 -0.4947 -0.5308
+## 
+## $resVar
+## [1] 0.678</code></pre>
+<p>The last ten random effect predictions are for the batch effect. I think the <code>batch:cask</code> factor comes first as it has more levels.</p>
+<p>We compare it with the <code>lme4</code>-result:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(fm &lt;-<span class="st"> </span><span class="kw">lmer</span>(strength ~<span class="st"> </span>(<span class="dv">1</span>|batch/cask), <span class="dt">data =</span> Pastes, <span class="dt">REML=</span>T))</code></pre></div>
+<pre><code>## Linear mixed model fit by REML ['lmerMod']
+## Formula: strength ~ (1 | batch/cask)
+##    Data: Pastes
+## 
+## REML criterion at convergence: 247
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -1.4798 -0.5156  0.0095  0.4720  1.3897 
+## 
+## Random effects:
+##  Groups     Name        Variance Std.Dev.
+##  cask:batch (Intercept) 8.434    2.904   
+##  batch      (Intercept) 1.657    1.287   
+##  Residual               0.678    0.823   
+## Number of obs: 60, groups:  cask:batch, 30; batch, 10
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)   60.053      0.677    88.7</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ranef</span>(fm)</code></pre></div>
+<pre><code>## $`cask:batch`
+##     (Intercept)
+## a:A       1.775
+## a:B       0.884
+## a:C      -2.572
+## a:D      -3.053
+## a:E      -3.318
+## a:F       3.598
+## a:G       2.454
+## a:H      -1.790
+## a:I      -4.574
+## a:J      -0.694
+## b:A       0.333
+## b:B      -2.481
+## b:C       2.619
+## b:D      -2.091
+## b:E      -3.942
+## b:F      -1.642
+## b:G      -0.142
+## b:H       4.267
+## b:I       4.271
+## b:J      -0.309
+## c:A       1.967
+## c:B       0.211
+## c:C       3.629
+## c:D       4.494
+## c:E      -0.385
+## c:F      -0.152
+## c:G      -2.594
+## c:H       3.161
+## c:I      -2.219
+## c:J      -1.703
+## 
+## $batch
+##   (Intercept)
+## A      0.8006
+## B     -0.2725
+## C      0.7223
+## D     -0.1278
+## E     -1.5024
+## F      0.3545
+## G     -0.0555
+## H      1.1081
+## I     -0.4956
+## J     -0.5318</code></pre>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

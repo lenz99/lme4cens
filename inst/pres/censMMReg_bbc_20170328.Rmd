@@ -1,0 +1,545 @@
+---
+title: "Censored observations in mixed-model regression"
+author: "MK"
+date: "28 March 2017"
+output:
+  ioslides_presentation:
+    incremental: false
+    widescreen: true
+---
+
+
+
+<!-- Latex stuff -->
+\usepackage{amssymb}
+\usepackage{amsmath}
+
+\newcommand{\N}[1]{\mathcal{N}(#1)}
+\newcommand{\R}{ℝ} 
+\newcommand{\1}{𝟙}
+\newcommand{\inv}{^{-1}}
+<!-- matrix transpose {^\raisebox{.2ex}{\top}}}-->
+\newcommand{\tr}{^\intercal}
+\newcommand{\invtr}{^{\scriptscriptstyle-1!\intercal}}
+\newcommand{\kron}{\:\otimes\:}
+\newcommand{\yobs}{y_\text{obs}}
+
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\cov}{cov}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\logLik}{L}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\TTr}{T}
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tibble)
+library(dplyr)
+library(survival)
+library(microbenchmark)
+library(censReg)
+library(ggplot2)
+
+library(devtools)
+dev_mode(on = TRUE)
+library(lme4cens)
+```
+
+
+
+## Motivation
+
+<div class="columns-2">
+
+- CML clinical trial
+- molecular measurement of remission level
+- patients are followed-up 
+- bi-exponential form per patient assumed
+- lower detection limit for individual measurements
+- compare two treatments
+
+```{r motivPlot, message=FALSE, fig.width=5, fig.height=6}
+library(leukemiAnalysis)
+pFit <- singlePatientFit(dat = 38, type = "lcensored")
+plot(pFit, show.fit = FALSE, main = "Patient Follow-up Data")
+detach("package:leukemiAnalysis")
+```
+
+</div>
+
+
+
+
+
+# Censoring
+
+## Censoring
+
+> - A response $X$ is known to have occurred only within certain interval
+> - Known from survival analysis
+>     - Response: survival time, i.e. time to death
+>     - Censoring: partially observed survival time, i.e. last seen alive
+> - Right censoring: $X ∈ [c_r, ∞)$
+> - Left censoring: $X ∈ (-∞, c_l]$
+> - Types of censoring
+>     - fixed right censoring time, e.g. study end ("Type I censoring")
+>     - random (left or right) censoring
+
+
+
+## Random left censoring
+<div class="columns-2">
+- $X$ true response variable
+- $C_l$ censoring variable
+<!-- - censoring: $X < C_l$ else $X ≥ C_l$ -->
+- observe __(T, δ)__ with
+    - $T=\max(X, C_l);\,$ δ ∈ {0,1} status
+    - δ=0 censoring: $$T = C_l \text{ and } X < C_l$$
+    - δ=1 event: $$T = X \text{ and } X ≥ C_l$$
+
+
+Function      |  Event X  | Censoring C~l~ |
+---------     | --------- | ----------- |
+Density       | f         |      g      |
+Cum Distrib   | F         |      G      |
+Survival      | S = 1-F   |     H = 1-G |
+<!-- Hazard        | λ         |        μ    | -->
+
+</div>
+
+
+
+## Likelihood Model
+> - Assume distribution for $X$ with density f~θ~ with parameter θ
+> - Given a random sample x=(x~1~, .., x~n~)
+> - Generally: $$L(θ\,|\, x) \propto \prod_{i=1}^n f_θ(x_i)$$
+
+
+## Density for (T, δ)
+> - Assume independence of X and C
+\[
+\begin{aligned}
+f(t, δ = 1) &= f(t) \cdot (1-H(t))\\[1.5ex]
+f(t, δ = 0) &= g(t) \cdot (1-S(t))\\
+\end{aligned}
+\]
+> - Together
+\[
+\begin{aligned}
+f(t, δ) &= (g(t) \cdot (1-S(t)))^{1-δ} \cdot ( f(t) \cdot (1-H(t)) )^δ\\
+    &= \underbrace{f(t)^δ (1-S(t))^{1-δ}}_{\text{response}} \cdot \underbrace{g(t)^{1-δ} (1-H(t))^δ}_{\text{censoring}}
+\end{aligned}
+\]
+
+
+## Likelihood Model for Left-Censoring
+> - Likelihood
+\[
+\begin{aligned}
+L &= \prod_{i=1}^n f(t_i, δ_i)\\
+  &= \prod_{i=1}^n f(t_i)^{δ_i} (1-S(t_i))^{1-δ_i} \cdot g(t_i)^{1-δ_i} (1-H(t_i))^{δ_i}
+\end{aligned}
+\]
+> - If censoring independent of the response event:
+\[
+L \propto \prod_{i=1}^n f(t_i)^{δ_i} (1-S(t_i))^{1-δ_i} = \prod_{i∈D} f(x_i) \cdot \prod_{i∈L} [1-S(x_i)]
+\]
+
+
+## Likelihood contributions
+
+- For independent censoring:
+
+Observed response    | Abbrev |  Contribution  | 
+-----------------    | ------ | -------------- | 
+exact                |  D  | f(x)           | 
+right-censored       |  R  | S(x)           | 
+left-censored        |  L  | 1-S(x)         | 
+interval-censored    |  I  | S(L) - S(R)    |
+
+$$
+L \propto \prod_{i∈D} f(x_i) \cdot \prod_{i∈R} S(x_i) \cdot \prod_{i∈L} [1-S(x_i)] \cdot \prod_{i∈I} [ S(L_i) - S(R_i)]
+$$
+
+
+## Example {.example}
+- Exponentially distributed response
+- Random right censoring, independent of the response
+- Sample {(t~1~, δ~1~), ..., (t~n~, δ~n~)} with $r$ observed events (|D|=r)
+- Density $f(x) = λ \exp(-λ x)$ and survival $S(x) = \exp(-λ x)$ with λ > 0
+
+> - Likelihood: $L \propto \prod_{i∈D} f(x_i) \cdot \prod_{i∈R} S(x_i)$
+> - $L(λ) = λ^r \cdot \exp(-λ \sum_i t_i)$ 
+> - $\hat λ = \frac{r}{\sum_i t_i}$
+
+
+
+
+## Example {.example}
+- Exponential distribution with parameter λ > 0
+- Random left censoring
+$$
+\begin{aligned}
+L(λ) &= \prod_{i∈D} f(x_i) \cdot \prod_{k∈L} [1-S(x_k)] \\
+  &= λ^r \cdot \exp(-λ \sum_{i∈D} t_i) \cdot \prod_{k∈L} (1-\exp(-λ t_k))
+\end{aligned}
+$$
+
+- More complex form than with right censoring
+
+
+## Example: own ML-implementation
+```{r mle_exp_censLeft, echo = TRUE, eval = FALSE}
+# neg. log-likelihood
+negLogLik_expLCens <- function(data){
+  
+  nbrEvents <- sum(data$status)
+  eventIdx <- data$status == 1L
+  
+  function(l)
+    - nbrEvents * log(l) + l * sum(data$T[eventIdx]) -
+    sum(log(1-exp(-l * data$T[!eventIdx])))
+}
+
+## find MLE
+optimize(negLogLik(data), interval = c(0, 10))
+
+```
+
+
+## Implementation in R's `survival` package
+- `survival::survreg` function for ML-fitting with censored observations
+- Left-censoring
+```{r survreg_left, echo=TRUE, eval=FALSE}
+survreg(Surv(T, status, type = "left") ~ 1, dist = "exp", data)
+```
+
+- Right-censoring
+
+```{r survreg_right, echo=TRUE, eval=FALSE}
+survreg(Surv(T, status, type = "right") ~ 1, dist = "exp", data)
+```
+
+
+
+## Example: Tobit model {.example}
+- Linear model with left-censored response ('latent' response)  (Tobin, Econometrica, 1958)
+$$
+\begin{aligned}
+y^* &= X β + ε \qquad \text{ with } ε\sim \N{0, σ^2\cdot I_n} \\[1ex]
+y_i   &= \Bigl\{ \begin{matrix} 0 & \text{ if } y_i^* ≤ 0 \\ 
+                    y_i^* & \text{ if } y_i^* > 0 \end{matrix}
+\end{aligned}
+$$
+
+> - Normal density $ϕ_{μ, σ^2}$ and distribution function $F=Φ_{μ, σ^2}$
+> - Likelihood  $$L = \prod_{i∈D} ϕ_{x_i\tr β,σ^2}(y_i) \prod_{j∈L} Φ_{x_i\tr β,σ^2}(y_i)$$ 
+<!-- $$L = \prod_{i∈D}\frac{1}{σ} ϕ(\frac{y_i - x_i\tr β}{σ}) \prod_{j∈L} Φ(\frac{y_i - x_i\tr β}{σ})$$ -->
+
+
+## Example: implementation in `lme4cens` {.example}
+- re-use `Surv`-object to model censoring in response
+```{r lmcens, echo = TRUE}
+lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + occupation + rating,
+       data = Affairs)
+```
+
+
+
+
+
+
+# Mixed models
+
+## Example: `sleepstudy`
+
+- Reaction time after continued sleep deprivation
+- Subset of four subjects
+
+```{r sleepstudy2_plot1}
+sleepstudy2 %>% 
+  ggplot(data = ., mapping = aes(x = Days, y = Reaction)) +
+  geom_point() + 
+  facet_wrap(~Subject)
+```
+
+
+## The Linear Mixed Model
+- Described by 2 vector-valued random variables
+    - the response vector $Y$ _and_
+    - the vector of random effects $B$
+- conditional distribution of $Y$ given $B=b$ is modelled as
+$$
+Y_{\;|\; B = b} \sim \N{X\beta + Zb, \, \sigma^2 I_n}
+$$
+
+> - $β∈ℝ^p$ fixed effects
+> - $b∈ℝ^q$ random effects
+> - Conditionally on $B=b$, a simple diagonal covariance structure for $Y$
+> - $Y$ is multivariate normal with complex covariance structure.
+
+
+## Random effects
+> - $B \sim \N{0, Σ_θ}$ where $Σ_θ$ is a $q\times q$-covariance matrix.
+> - $Σ_θ = σ^2 Λ_θ Λ_θ^T$ Cholesky-decomposition
+>     * variance-component parameter θ _and_
+>     * __relative covariance factor__ $Λ_θ ∈ ℝ^{q\times q}$
+> - Use __spherical random-effects__ variable $U \sim \N{0, \sigma^2 I_q}$ with $$B = Λ_θ U$$
+
+
+## Densities
+> * Y|U and U are multivariate normal variables
+> * Using sum of squares $\rho^2(\theta, \beta, u) := \big\| y_\text{obs} - \mu_{Y | U=u} \big\|^2$
+$$
+\begin{aligned}
+f_{Y|U}(\yobs | u)   &=   \frac{1}{(2\pi \sigma^2)^{n/2}} \cdot \exp \frac{-\rho^2(\theta, \beta, u)}{2\sigma^2}\\
+f_U (u)    &= \frac{1}{(2\pi\sigma^2)^{q/2}} \cdot \exp \frac{- \|u\|^2}{2\sigma^2} \\
+\end{aligned}
+$$
+
+
+## Joint density
+$$
+\begin{aligned}
+f_{Y,U}(\yobs, u)    &=   f_{Y|U}(\yobs | u)  \qquad \cdot \qquad f_U (u) \\
+    & = \frac{1}{(2\pi \sigma^2)^{n/2}} \exp \frac{-\rho^2(\theta, \beta, u)}{2\sigma^2} \; \cdot \; \frac{1}{(2\pi\sigma^2)^{q/2}} \exp \frac{- \|u\|^2}{2\sigma^2} \\
+    & =  \frac{1}{(2\pi \sigma^2)^{(n+q)/2}} \cdot \exp \frac{-\rho^2(\theta, \beta, u) - \|u\|^2 }{2\sigma^2}\\
+    & =  \frac{1}{(2\pi \sigma^2)^{(n+q)/2}} \cdot \exp \frac{-r^2(\theta, \beta, u) }{2\sigma^2}
+\end{aligned}
+$$
+
+> * __penalized sum-of-squares__ $r^2(\theta, \beta, u) := \rho^2(\theta, \beta, u) + \|u\|^2$ 
+
+
+
+## Likelihood
+$$
+\begin{aligned}
+L(\theta, \beta, \sigma^2 | \yobs) &=  f_Y(\yobs) \\
+    &= \int f_{Y,U}(\yobs, u) du \\
+    &=  \int f_{Y|U}(\yobs | u) \cdot f_U(u) du\\
+  %%&=  \int \frac{\sqrt{|W|}}{(2\pi \sigma^2)^{n/2}} \exp \frac{-\rho^2(\theta, \beta, u)}{2\sigma^2} \cdot \frac{1}{(2\pi \sigma^2)^{q/2}} \exp \frac{-\|u\|^2}{2\sigma^2} du \\
+  &=  \frac{1}{(2\pi \sigma^2)^{(n+q)/2}} \cdot \int \exp \frac{-r^2(\theta, \beta, u)}{2\sigma^2} du
+\end{aligned}
+$$
+
+
+## Example: `sleepstudy`
+
+```{r sleepstudy2_plot2, ref.label="sleepstudy2_plot1"}
+```
+
+
+## Example: Random intercept model
+
+<div class="columns-2">
+
+$$
+\begin{aligned}
+Z & =\Bigl[ \begin{smallmatrix} 1 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0\\ 1 & 0 & 0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\
+0 & 1 &  0 & 0 \\ 0 & 1 &  0 & 0 \\ \vdots & \vdots & \vdots & \vdots \end{smallmatrix}\Bigl]
+∈ ℝ^{n𐄂q}\\
+B & = \Bigl[ \begin{smallmatrix} b_1 \\ b_2 \\ b_3 \\ b_4 \end{smallmatrix} \Bigl] \sim \N{0, σ_b^2 I_q} \\
+  & \; \text{ with between-subject variance } σ_b^2 \\
+  & \;
+\end{aligned}
+$$
+
+* Simple scalar random effect
+
+> * $Σ_θ = σ_b^2 I_q = σ^2 Λ_θ Λ_θ^T$
+> * $Λ_θ = \frac{σ_b}{σ} I_q$ 
+> * $U = \frac{σ}{σ_b} \cdot B$
+> * $Y|_{U = u} \sim \N{Xβ + Z \frac{σ_b}{σ} u, \, \sigma^2 I_n}$
+
+</div>
+
+
+
+
+## Likelihood for random intercept model
+
+- Contribution for subject $i$
+
+$$
+\begin{aligned}
+L_i(\theta, \beta, \sigma^2 | y_i) &=  f_Y(y_i) = \int f_{Y,U}(y_i, u_i) \, du_i \\
+    &= \int f_{Y|U}(y_i | u_i) \cdot f_U(u_i) \, du_i\\
+    &= \int ϕ_{X_i β + \frac{σ_b}{σ}u_i, σ^2}(y_i)\cdot  ϕ_{0, σ^2} (u_i) \, du_i\\
+    &= \int ϕ_{X_i β + b_i, σ^2}(y_i) \cdot  ϕ_{0, σ_b^2} (b_i) \, db_i\\
+\end{aligned}
+$$
+
+- Together __not__ a product of likelihood contribution of individual observations
+
+
+
+# Efficient Estimation of Linear Mixed Models 
+
+## Pseudo-data approach {.incremental}
+* amend the observed data $y_\text{obs}$ with an "observed" $u_\text{obs}=0$ for the (unobservable) spherical
+random-effects variable $u$
+* PLS-problem becomes a standard least square problem in the amended space
+
+$$
+\begin{aligned}
+r^2(\theta, \beta, u)  &= \Big\| \begin{bmatrix}  \yobs - \mu_{Y | U=u} \\  -u \end{bmatrix} \Big\|^2 \\
+ &= \Big\| \underbrace{\begin{bmatrix}  \yobs  \\ 0\end{bmatrix}}_{ =: \tilde y}  - 
+\underbrace{\begin{bmatrix}  Z \Lambda_\theta &  X \\ I_q & 0\end{bmatrix}}_{ =: \tilde X_θ} \begin{bmatrix} u \\ \beta \end{bmatrix} \Big\|^2
+\end{aligned}
+$$
+
+* Find optimal parameters $\hat \mu_{U|Y=y_\text{obs}}, \hat \beta_\theta$ (via normal equation) as function of θ
+<!-- * Allows to profile out parameters $\beta$ and $\mu_{U|Y=y_\text{obs}}$ as a function of θ -->
+* Define $\mathbf{r^2(\theta)} := r^2(\theta, \hat \beta_\theta, \hat \mu_{U|Y=y_\text{obs}})$
+
+
+
+## Maximum Likelihood Estimation
+
+* Parameterized by θ only (β and σ profiled out) 
+
+$$
+\begin{aligned}
+\log L (\theta | y_{\text{obs}}) &= \log |L_\theta |\inv - \frac{n}{2} \cdot \big[ 1 + \log \frac{2 \pi \cdot r^2(\theta)}{n} \big]\\[.5ex]
+  &\; (L_θ \text{ is a matrix derived from } \tilde X_θ)
+\end{aligned}
+$$
+
+* Use general optimizer to maximize $θ \mapsto L(θ)$
+* Repeated evaluation of PLS-algorithm
+
+
+
+
+
+# Mixed models with Censoring
+
+## Example: sleepstudy
+- Subset of `sleepstudy`-data with left- and right-censoring
+
+```{r sleepstudy2_plot}
+sleepstudy2 %>% 
+  dplyr::mutate_(shapeCol = ~factor(event3, levels = 0:2, labels = c("right", "obs", "left"))) %>% 
+  ggplot(data = ., mapping = aes(x = Days, y = Reaction,
+             colour = shapeCol, shape = shapeCol)) + 
+  geom_point() + 
+  facet_wrap(~Subject) + 
+  scale_shape_manual(values = c(right = 17, obs = 16, left = 25), guide = guide_legend(title = "Status")) + 
+  guides(colour = FALSE)
+```
+
+
+
+## Likelihood w/ left censoring
+
+- Contribution for subject $i$
+
+$$
+\begin{aligned}
+L_i(\theta, \beta, \sigma^2 | y_i) &=  f_Y(y_i) \\
+    &= \int f_{Y,U}(y_i, u_i) du_i \\
+    &=  \int f_{Y|U}(y_i | u_i) \cdot f_U(u_i) du_i \\
+    &= \int \bigl[ \prod_{t∈D} ϕ_{x_{it}\tr β + b_i, σ^2}(y_{it}) \prod_{k∈L} Φ_{x_{ik}\tr β + b_i, σ^2}(y_{ik})  \bigr] \cdot ϕ_{0, σ_b^2}(b_i)  db_i\\
+    %% &= \int \bigl[ \prod_{t∈D} \frac{1}{σ} \cdot ϕ(\frac{y_{it} - x_{it}\tr β - b}{σ})  \prod_{k∈L} Φ(\frac{y_{ik} - x_{ik}\tr β - b}{σ})  \bigr] \cdot \frac{1}{σ_b} ϕ(\frac{b}{σ_b})  db \\ 
+\end{aligned}
+$$
+
+
+## Gauß-Hermite quadrature
+
+- Evaluate an improper integral as weighted average of order o
+- Fewer function evaluations than standard numerical integration
+$$
+\int_{-\infty}^\infty \exp(-x^2) \;f(x) \, dx \approx \sum_{i=1}^o w_i \cdot f(x_i)
+$$
+
+```{r gh_int_benchmark}
+readRDS("benchm_ghInt_rInt.rds")
+```
+
+
+
+
+
+## Implementation in `lme4cens`
+
+- Random intercept model
+- Re-use modules from `lme4`
+
+```{r sleepstudy_lmeCens, echo=TRUE}
+lFormula(Surv(Reaction, time2 = Reaction, event = event2, type = "interval") ~ 
+           Days + (1|Subject), data = sleepstudy2, REML = FALSE) %>% 
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  myDevFun
+  
+## optimize deviance function
+paramS <- c(int=260, slope=5, logS_betw=3, logS=2)
+parEstim <- optim(fn = myDevFun, par = paramS)
+
+c(parEstim$par, logLik = -parEstim$value)
+```
+
+
+
+## Outlook
+
+```{r ex2_sleepstudy2_censReg, eval = FALSE}
+sleepstudy2 %>% 
+  dplyr::mutate_(Reaction = ~ pmin(pmax(Reaction, 212), 350))  %>% 
+  plm::pdata.frame(index = c("Subject", "Days")) %>% 
+  censReg(Reaction ~ as.numeric(Days), left = 212, right = 350, start = paramS, data = .) ->
+  
+  fm_sleepstudy2_censReg
+
+fm_sleepstudy2_censReg
+```
+
+
+- Validate results:
+    - simulation studies
+    - package `censReg` implements random-intercept censored regression in R
+- Implement also restricted maximum likelihood (REML)
+- Implement non-linear mixed models with censoring
+- Tap deeper into `lme4`-structures 
+- Allow for more complex random-effect structures
+    - Other fitting methods: _maximum simulated likelihood_
+
+
+----- 
+
+~ Fine ~
+
+
+
+
+
+# Backup slides
+
+## Likelihood Model for Left-Censoring
+- Censoring $C_l$
+\[
+\begin{aligned}
+P(t ≤ T ≤ t + h, δ = 0) &= P(t ≤ C_l ≤ t + h, C_l ≥ X)\\
+    &\approx P(t ≤ C_l ≤ t + h, t ≥ X)\\
+    &= P(t ≤ C_l ≤ t + h) \cdot P(X ≤ t)\\
+    &= g(ξ) h \cdot (1-S(t)) \qquad \text{ a  ξ ∈ [t, t+h)}\\[1ex]
+\end{aligned}
+\]
+- Observed response $X$
+\[
+\begin{aligned}
+P(t ≤ T ≤ t + h, δ = 1) &= P(t ≤ X ≤ t + h, C_l ≤ X)\\
+    &\approx P(t ≤ X ≤ t + h, C_l ≤ t)\\
+    &= P(t ≤ X ≤ t + h) \cdot P(C_l ≤ t)\\
+    &= f(ξ) h \cdot (1-H(t)) \qquad \text{ a  ξ ∈ [t, t+h)}
+\end{aligned}
+\]
+
+
+ 
+
+

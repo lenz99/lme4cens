@@ -1,0 +1,256 @@
+---
+title: "Example analyses of simple linear mixed models"
+author: "MK"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: yes
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Example: sleepstudy}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE, message=FALSE}
+
+library(dplyr)
+devtools::dev_mode(on = TRUE)
+## knitr package options
+knitr::opts_knit$set(verbose = FALSE)
+options(digits = 3L)
+
+library(lme4cens)
+
+data("sleepstudy2", package = "lme4cens")
+data("Pastes", package = "lme4")
+
+VERBOSE <- 0L
+
+DO_REML <- FALSE
+```
+
+
+We test our linear mixed model R-routines with some small examples.
+We use a subset of the infamous `sleepstudy`-data to fit simple linear mixed models.
+
+
+
+### Random intercept model
+
+We basically have a single parameter $\theta$ that corresponds to the root of the scaled between-subject variance.
+```{r ex1_lmm_ranInt_sleepstudy2}
+
+lFormula(Reaction ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML) %>% 
+  append(list(verbose=VERBOSE)) %>% 
+  do.call(mkLmerDevfun_R, .) ->
+  
+  myDevFun_f
+
+# one-dimensional minimization on theta-parameter
+optRes <- optimize(myDevFun_f, interval = c(0.01, 15))
+
+theta_h <- optRes$minimum
+attributes(optRes$objective)
+```
+The optimization routine gives parameter estimate $\theta = `r theta_h`$ which corresponds to a scaled between-subject variance of `r theta_h^2`.
+The unscaled between-subject variance is estimated as `r theta_h^2 * attr(optRes$objective, "resVar")`.
+
+
+We compare it with the output of `lme4`:
+```{r ex1_lmm_ranInt_sleepstudy2_lme4}
+summary(fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML))
+ranef(fm)
+```
+
+
+#### LmerCens_rInt function
+We use the same data -- this time we send it through our own (direct integration) implementation for the likelihood that supports censoring.
+
+```{r ex1_lmm_ranInt_sleepstudy2_cens}
+library(survival)
+
+# Gauss-Hermite quadrature
+lFormula(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML) %>% 
+  append(list(verbose=VERBOSE, quadrature = "gh")) %>%
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  
+  myDevFun_gh_f
+
+
+## optimize function
+paramS <- c(260, 5, 3, 2)
+
+paramEst <- optim(par = paramS, fn = myDevFun_gh_f)
+paramEst$par
+```
+
+
+The parameters that come out are intercept and slope (`r sprintf("β~0~ = %.4f and β~1~ = %.4f", paramEst$par[1], paramEst$par[2])`).
+The between-subject variance is estimated as `r sprintf("%4.f", exp(2*paramEst$par[3]))`
+while the residual variance as `r sprintf("%4.f", exp(2*paramEst$par[4]))`.
+The likelihood is `r paramEst$value`.
+
+
+
+
+
+#### With weighting
+We apply an arbitary weighting to the observations.
+
+```{r ex2_lmm_ranInt_w_sleepstudy2}
+w_sleepstudy2 <- rep(c(rep(2,3), rep(1,7)), 4)
+stopifnot( length(w_sleepstudy2) == NROW(sleepstudy2) )
+
+lFormula(Reaction ~ Days + (1|Subject),
+         weights = w_sleepstudy2, data = sleepstudy2) %>% 
+  append(values = list(verbose=VERBOSE)) %>% 
+  do.call(mkLmerDevfun_R, .) ->
+  
+  myDevFun_fw
+
+
+optRes <- optimize(myDevFun_fw, interval = c(0.01, 19))
+theta_h <- optRes$minimum
+
+attributes(optRes$objective)
+```
+
+The optimization routine gives $\theta = `r theta_h`$ which corresponds to a scaled between-subject variance of `r theta_h**2`.
+The unscaled between-subject variance is estimated as `r theta_h^2 * attr(optRes$objective, "resVar")`.
+
+We compare it with the output of `lme4`:
+```{r ex2_lmm_ranInt_w_sleepstudy2_lme4}
+fm <- lmer(Reaction ~ Days + (1|Subject),
+            weights = w_sleepstudy2, 
+             data = sleepstudy2, REML=T)
+ranef(fm)
+summary(fm)
+```
+
+
+
+
+
+### Random intercept-slope model
+
+We have $k=1$ random-effect factor with $l_1 = 4$ levels and $p_1 = 2$ columns (intercept and `Days`).
+Here, $\theta$ is a three-dimensional parameter.
+```{r ex1_lmm_ranIntSlo_sleepstudy2}
+
+lFormula(Reaction ~ Days + (Days|Subject), data = sleepstudy2, REML=T) %>% 
+  append(values = list(verbose=VERBOSE)) %>% 
+  do.call(mkLmerDevfun_R, .) ->
+  
+  myDevFun_f
+
+# three-dimensional minimization of theta-parameter
+optRes <- optim(par = c(1, 0, 1), fn = myDevFun_f)
+
+theta_h <- optRes$par
+
+modelParamEstim <- attributes(myDevFun_f(theta = theta_h))
+modelParamEstim
+```
+
+The optimization routine gives $\theta = ( `r theta_h` )$ which builds to the relative covariance factor:
+```{r ex1_lmm_ranIntSlo_sleepstudy2_relCoVar, echo=FALSE, results='markup'}
+nc <- 2
+rowIndices <- rep(1:nc, 1:nc)
+colIndices <- sequence(1:nc)
+relCovarFactor <- Matrix::sparseMatrix(i = rowIndices, j = colIndices,
+                                    x = as.numeric(rowIndices == colIndices) )
+relCovarFactor@x <- theta_h
+relCovarFactor
+```
+
+The estimates on the diagonal of the relative covariance factor are by convention taken as absolute value,
+the sign does not matter for the resulting estimated covariance-matrix $\Sigma_\theta$ of the random-effects vector B.
+It is $\Sigma_\theta = \sigma^2 \Lambda_\theta \Lambda_\theta^T$.
+```{r ex1_lmm_ranIntSlo_sleepstudy2_REcovar}
+modelParamEstim[["resVar"]] * Matrix::tcrossprod(relCovarFactor)
+cov2cor(modelParamEstim[["resVar"]] * Matrix::tcrossprod(relCovarFactor))
+```
+
+
+We compare it with the output of `lme4`:
+```{r ex1_lmm_ranIntSlo_sleepstudy2_lme4}
+summary(fm <- lmer(Reaction ~ Days + (Days|Subject),
+                   data = sleepstudy2, REML=T))
+ranef(fm)
+```
+
+
+
+
+### Crossed random effects
+
+We use the `Penicillin`-data from `lme4`-package. The effect of six different penicillin samples is measured as the `diameter` of the zone of inhibition of bacteria growth. Six measurements are done on a single plate that acts like a blocking factor.
+We have a randomized complete block design (RCBD), i.e. each sample is measured exactly once on each plate.
+
+```{r ex2_lmm_crossed_Penicillin} 
+data("Penicillin", package = "lme4")
+lFormula(diameter ~ (1|plate) + (1|sample), data = Penicillin, REML = TRUE) %>% 
+  append(list(verbose=VERBOSE)) %>% 
+  do.call(mkLmerDevfun_R, .) ->
+  
+  myDevFun_f
+
+
+optRes <- optim(par = c(1, 2), fn = myDevFun_f)
+
+theta_h <- optRes$par
+
+# evaluate the objective-function at the optimal value
+modelParamEstim <- attributes(myDevFun_f(theta = theta_h))
+modelParamEstim
+```
+
+The optimization routine gives $\theta = ( `r theta_h` )$ which corresponds to two scaled between-subject variance of $(`r theta_h**2`)$.
+The unscaled between-subject variances for the two random effects are estimated as $(`r theta_h^2 * modelParamEstim$resVar`)$.
+
+
+We compare it with the standard `lme4`-output of the same model specification:
+```{r ex2_lmm_crossed_Penicillin_lme4}
+summary(fm <- lmer(diameter ~ (1|plate) + (1|sample), data = Penicillin, REML = TRUE))
+ranef(fm)
+```
+
+
+
+
+
+
+### Nested random effects
+
+We use a dataset with a response (`strength`) which depends on 
+$k=2$ different factors with simple ($p_1 = p_2 = 1$) random effects:
+
+* batch effect
+* cask effect within batch
+
+Hence, $\theta$ consists of two parameters.
+```{r ex3_lmm_nested_Pastes}
+lFormula(strength ~ (1|batch/cask), data = Pastes, REML=T) %>% 
+  append(values = list(verbose=VERBOSE)) %>% 
+  do.call(mkLmerDevfun_R, .) ->
+  
+  myDevFun_f
+
+
+optRes <- optim(par = c(1, 1), fn = myDevFun_f)
+
+theta_h <- optRes$par
+
+modelParamEstim <- attributes(myDevFun_f(theta = theta_h))
+modelParamEstim
+```
+The last ten random effect predictions are for the batch effect.
+I think the `batch:cask` factor comes first as it has more levels.
+
+We compare it with the `lme4`-result:
+```{r ex3_lmm_nested_Pastes_lme4}
+summary(fm <- lmer(strength ~ (1|batch/cask), data = Pastes, REML=T))
+ranef(fm)
+```
+

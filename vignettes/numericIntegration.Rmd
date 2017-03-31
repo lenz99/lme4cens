@@ -1,0 +1,72 @@
+---
+title: "Numerical Integration"
+author: "MK"
+date: "2017-03-10, `r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Numerical Integration}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+The package uses numerical integration to calculate the likelihood contribution for patients with repeated measurements with limitation.
+
+Here, we look at some examples of integration.
+
+First, we load the package and we use `microbenchmark` to assess time of different R-expressions.
+
+```{r load, message=FALSE}
+library(lme4cens)
+library(microbenchmark)
+```
+
+## Gauss-Hermite Quadrature
+Gaussian quadrature rules are useful to do numerical integration with fewer function evaluations than normal trapezoid rules -- if the integrand function is of appropriate form.
+In Gauss-Hermite quadrature, we expect a weight funciton $\omega = \exp(-x^2)$ and the aim is to approximate the improper integral $\int_{-\infty}^\infty \exp(-x^2) f(x) dx$ as an weighted average (weights $w_i$) of function evaluations at points $x_i$. The number of points is the order of the quadrature rule.
+$$
+\int_{-\infty}^\infty \exp(-x^2) \;f(x) \, dx \approx \sum_{i=1}^o w_i \cdot f(x_i)
+$$
+
+The Gauss-Hermite weight function is nearly the standard normal probability density function (PDF).
+If the weight function is adapted to be the standard normal PDF then the weights will sum to 1 (because a PDF is normalized to 1).
+
+We can extend the quadrature rule to more dimensions by taking a grid of points and use the product of the corresponding 1-dimensional weights.
+__Sparse grid rules__  combine quadrature rules (possibly of different orders) in the different directions (=dimensions) and have fewer points as the full Cartesian product.
+The sum of the order in the different dimensions is called _l_-sum.
+Concretely, a sparse gird rule of order _L_ is constructed by adding all the rules with _l_-sum equal to L and subtracting the rules with the _l_-sum of L-1.
+Sparse grid rules are hence useable also for efficient high-dimensional integration.
+
+
+
+## Density of standard normal distribution
+We check the normalization property of the normal density and  calculate the inproper integral over the density.
+This is a classical example where one can use Gauß-Hermite quadrature. 
+Besides the Gauss-Hermite weight function only a constant function remains.
+Here, we look at the timings of different implementations. There are also tests in place to check for the correct results.
+
+```{r normality_dens_stdNorm}
+dnorm2 <- function(x) 1/sqrt(2*pi) * exp(-x^2/2)
+microbenchmark(
+  integrate(dnorm, lower = -Inf, upper = Inf),
+  integrate(dnorm2, lower = -Inf, upper = Inf),
+  int_gh(f = function(x) 1),
+  int_gh(f = 1),
+  int_gh(f=1, o=3),
+  times = 1000)
+
+```
+
+
+## Expectation of squared normal variable
+The expectation of a squared normal variable is calculated by the integral of $x^2$ with the probability measure, conveyed by the normal density.
+For Gauss-Hermite, the weights basically cover the normal density part, and the square function remains as function.
+
+```{r exp_squaredNormal}
+MU <- -1.3
+SIGMA2 <- 3.1
+
+microbenchmark(stats::integrate(f = function(x) sqrt(2 * pi*SIGMA2)**-1 * exp(-(x-MU)^2/(2*SIGMA2)) * x^2, lower = -Inf, upper = Inf),
+               sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7),
+               times = 1000L)
+```
+The numerical result is `r sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7)`.
