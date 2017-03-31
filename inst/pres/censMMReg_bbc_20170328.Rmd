@@ -279,7 +279,8 @@ $$
 > - $β∈ℝ^p$ fixed effects
 > - $b∈ℝ^q$ random effects
 > - Conditionally on $B=b$, a simple diagonal covariance structure for $Y$
-> - $Y$ is multivariate normal with complex covariance structure.
+> - $Y$ is multivariate normal with complex covariance structure
+
 
 
 ## Random effects
@@ -288,6 +289,51 @@ $$
 >     * variance-component parameter θ _and_
 >     * __relative covariance factor__ $Λ_θ ∈ ℝ^{q\times q}$
 > - Use __spherical random-effects__ variable $U \sim \N{0, \sigma^2 I_q}$ with $$B = Λ_θ U$$
+
+
+
+
+## Example: Random intercept model
+
+<div class="columns-2">
+
+$$
+\begin{aligned}
+Z & =\Bigl[ \begin{smallmatrix} 1 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0\\ 1 & 0 & 0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\
+0 & 1 &  0 & 0 \\ 0 & 1 &  0 & 0 \\ \vdots & \vdots & \vdots & \vdots \end{smallmatrix}\Bigl]
+∈ ℝ^{n𐄂q}\\
+B & = \Bigl[ \begin{smallmatrix} b_1 \\ b_2 \\ b_3 \\ b_4 \end{smallmatrix} \Bigl] \sim \N{0, σ_b^2 I_q} \\
+  & \; \text{ with between-subject variance } σ_b^2 \\
+  & \;
+\end{aligned}
+$$
+
+* Simple scalar random effect
+
+> * $Σ_θ = σ_b^2 I_q = σ^2 Λ_θ Λ_θ^T$
+> * $Λ_θ = \frac{σ_b}{σ} I_q$ 
+> * $U = \frac{σ}{σ_b} \cdot B$
+> * $Y|_{U = u} \sim \N{Xβ + Z \frac{σ_b}{σ} u, \, \sigma^2 I_n}$
+
+</div>
+
+
+
+
+## Example: Random intercept model fit
+
+```{r sleepstudy2_plot2}
+fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2)
+sleepstudy2$pred <- predict(fm)
+
+sleepstudy2 %>% 
+  ggplot(data = ., mapping = aes(x = Days, y = Reaction)) +
+  geom_point() + 
+  geom_line(mapping = aes(x = Days, y = pred), colour = "orange", linetype = "dashed") + 
+  facet_wrap(~Subject)
+
+```
+
 
 
 ## Densities
@@ -327,35 +373,6 @@ L(\theta, \beta, \sigma^2 | \yobs) &=  f_Y(\yobs) \\
 $$
 
 
-## Example: `sleepstudy`
-
-```{r sleepstudy2_plot2, ref.label="sleepstudy2_plot1"}
-```
-
-
-## Example: Random intercept model
-
-<div class="columns-2">
-
-$$
-\begin{aligned}
-Z & =\Bigl[ \begin{smallmatrix} 1 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0\\ 1 & 0 & 0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\
-0 & 1 &  0 & 0 \\ 0 & 1 &  0 & 0 \\ \vdots & \vdots & \vdots & \vdots \end{smallmatrix}\Bigl]
-∈ ℝ^{n𐄂q}\\
-B & = \Bigl[ \begin{smallmatrix} b_1 \\ b_2 \\ b_3 \\ b_4 \end{smallmatrix} \Bigl] \sim \N{0, σ_b^2 I_q} \\
-  & \; \text{ with between-subject variance } σ_b^2 \\
-  & \;
-\end{aligned}
-$$
-
-* Simple scalar random effect
-
-> * $Σ_θ = σ_b^2 I_q = σ^2 Λ_θ Λ_θ^T$
-> * $Λ_θ = \frac{σ_b}{σ} I_q$ 
-> * $U = \frac{σ}{σ_b} \cdot B$
-> * $Y|_{U = u} \sim \N{Xβ + Z \frac{σ_b}{σ} u, \, \sigma^2 I_n}$
-
-</div>
 
 
 
