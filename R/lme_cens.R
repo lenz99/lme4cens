@@ -8,7 +8,7 @@
 #' @export
 #' @param fr dataframe with response variable in its first column
 #' @param reTrms list with random effect terms
-#' @return objective function which maps the covariance parameters theta to the corresponding restricted deviance
+#' @return objective function which maps the parameters to the corresponding negative log-likelihood
 mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, start = NULL, verbose = 0, quadrature = c("gh", "stats"), ...){
 
   quadrature <- match.arg(quadrature)
@@ -67,9 +67,9 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, start = NULL, v
 
   # negative log-likelihood
   negLogLikFun <- function(param){
-    stopifnot( length(param) == p+1L+1L ) # betw SD and residual SD (on log-scale) as extra parameter
+    stopifnot( length(param) == p+2L ) # betw SD and residual SD (on log-scale) as extra parameter
 
-    beta <- param[1:p]
+    beta <- param[1L:p]
     # std. deviation parameters are on log-scale
     betwSD <- exp(param[p+1L])
     resSD <- exp(param[p+2L])
@@ -103,7 +103,7 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, start = NULL, v
     switch(quadrature,
            gh = {
               for (i in 1:q){
-                Li[i] <- 1/sqrt(pi) * int_gh(f = function(mu, Ztrow, betwSD, resSD) intFun(mu = sqrt(2) * betwSD * mu, Ztrow, betwSD=betwSD, resSD),
+                Li[i] <- 1/sqrt(pi) * int_gh(f = function(mu, Ztrow, betwSD, resSD) intFun(mu = sqrt(2) * betwSD * mu, Ztrow, betwSD=betwSD, resSD = resSD),
                                              Ztrow = i, betwSD = betwSD, resSD = resSD)
               }
            },
@@ -115,6 +115,7 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, start = NULL, v
            stop("This quadrature is not implemented yet!")
 
     )
+
 
     -sum(log(Li+.Machine$double.xmin))
   }

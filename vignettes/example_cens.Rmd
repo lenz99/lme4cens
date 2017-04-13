@@ -14,6 +14,7 @@ vignette: >
 
 ```{r setup, include=FALSE, message=FALSE}
 library(dplyr)
+
 devtools::dev_mode(on = TRUE)
 ## knitr package options
 knitr::opts_knit$set(verbose = FALSE)
@@ -29,6 +30,7 @@ VERBOSE <- 0L
 ```
 
 We demonstrate examples for regression analysis for censored observations.
+
 
 ## Censored observations in the `survival`-package
 `Surv`-objects are used to hold a response value and its status information.
@@ -52,9 +54,13 @@ To mark infinity, you can use `Inf` or `NA`. `type='interval2'` is easier to cod
 
 `Surv`-objects are implemented as a matrix.
 
+
+
 ## Exponential distribution
 We generate random data (event and independently censoring) from a Weibull distribution.
 The left-censoring does not allow for an easy analytic solution. Hence, we do an own numeric likelihood maximization.
+
+The data (event- and the censoring process) are generated via Weibull distributions.
 
 ```{r expLeftCens}
 set.seed(123L)
@@ -69,11 +75,11 @@ ex_exp_lCens <- data_frame_(list(
 ))
 
 
+# efficient calculation of log(1-exp(x))
 log1mexp <- function(x){
   stopifnot( x < 0L, is.numeric(x) )
   
   log1pBranch <- x < -log(2)
-  ##y <- numeric(length(x))
   x[log1pBranch] <- log1p(-exp(x[log1pBranch]))
   x[!log1pBranch] <- log(-expm1(x[!log1pBranch]))
   
@@ -105,8 +111,12 @@ survreg(Surv(T, status, type = "left") ~ 1, dist = "exp",
 ```
 
 
+
+
 ## Linear Regression with censored observations: Tobit-model
-Tobi moodel uses normal error
+
+Tobit model uses normal error. Here an example with left-censored response at 0.
+
 ```{r ex1_lmcens_affairs}
 fm <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating, data = Affairs)
 
@@ -136,20 +146,31 @@ summary(fmw)
 
 
 
+
 ## Mixed Linear Models with censored observations
 
 We use a censored version of the `sleepstudy`-data, by applying the information in column `event3` for left- and right-censored measurements of reaction time.
-`event3` uses fixed boundaries when left- and right-censoring occurs.
+We use fixed boundaries (column `event3`) for left- and right-censoring so that we can compare the results with `censReg`.
 
 ```{r ex2_sleepstudy2_lme4cens}
-lFormula(Surv(Reaction, time2 = Reaction, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, REML=FALSE) %>% 
-  append(list(verbose=VERBOSE)) %>%
+REACT_L <- 212
+REACT_R <- 350
+
+sleepstudy2 %>% 
+  lFormula(Surv(pmin(pmax(Reaction, REACT_L), REACT_R), time2 = Reaction, event = event3,
+                type = "interval") ~ Days + (1|Subject), data = ., REML=FALSE) -> 
+  lForm
+
+
+
+lForm %>% 
+  append(list(verbose=VERBOSE, quadrature = "stats")) %>%
   do.call(mkLmerCensDevfun_rInt_R, .) ->
   
   myDevFun_f
 
 # Gauss-Hermite quadrature
-lFormula(Surv(Reaction, time2 = Reaction, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, REML=FALSE) %>% 
+lForm %>% 
   append(list(verbose=VERBOSE, quadrature = "gh")) %>%
   do.call(mkLmerCensDevfun_rInt_R, .) ->
   
@@ -160,21 +181,58 @@ lFormula(Surv(Reaction, time2 = Reaction, event = event3, type = "interval") ~ D
 paramS <- c(260, 5, 3, 2)
 
 paramEst <- optim(par = paramS, fn = myDevFun_gh_f)
+paramEst
 ```
+
 
 We compare it with the results of `censReg` on the same data.
 
-```{r ex2_sleepstudy2_censReg}
+```{r ex2_sleepstudy2_censReg, message = FALSE}
 library(censReg)
+
 sleepstudy2 %>% 
-  dplyr::mutate_(Reaction = ~ pmin(pmax(Reaction, 212), 350))  %>% 
-  plm::pdata.frame(index = c("Subject", "Days")) %>% 
-  censReg(Reaction ~ as.numeric(Days), left = 212, right = 350, start = paramS, data = .)
+  dplyr::mutate_(Reaction = ~ pmin(pmax(Reaction, REACT_L), REACT_R))  %>% 
+  plm::pdata.frame(index = c("Subject", "Days")) ->
+  
+  sleepstudy2.cr
+
+fm.censReg <- censReg::censReg(Reaction ~ as.numeric(Days), left = REACT_L, right = REACT_R,
+                               start = paramS, nGHQ = 8L, data = sleepstudy2.cr)
+
+summary(fm.censReg)
+```
+
+The fitted coefficients are different, in particular the intercept coefficient ${\hat β}_0 =$ `r paramEst$par[1]` (`lme4cens`) vs `r coef(fm.censReg)[1]` (`censReg`). The mean value of the observations per time point are:
+```{r sleepstudy2_desc, echo = FALSE, results='asis'}
+sleepstudy2 %>%
+  dplyr::group_by_(~ Days) %>%
+  dplyr::summarise_(mReaction = ~ mean(Reaction)) %>% 
+  knitr::kable(digits = 0L)
 ```
 
 
-### Benchmarking Gauß-Hermite vs Standard numeric integration 
-```{r benchm, cache=TRUE}
+
+
+We use our method with start values that are close to the optimal values of the `censReg`-fit:
+```{r ex2_sleepstudy2_lme4censLL}
+optim(par = coef(fm.censReg), fn = myDevFun_gh_f)
+```
+
+The variance components change in comparison to the given initial optimal `censReg` values.
+
+```{r ex2_sleepstudy2_censRegLL, echo = FALSE}
+ll.censReg <- censReg::censReg(Reaction ~ as.numeric(Days), left = REACT_L, right = REACT_R, start = paramEst$par, logLikOnly = TRUE, nGHQ = 8L,
+                               data = sleepstudy2.cr)
+```
+
+Vice versa, we check the log-likelihood at the optimal fit value of our own implementation. `censReg` calculates the log-likelihood contributions per subject,
+together with its gradient: the contributions are
+`r paste(round(ll.censReg, 1), collapse = ", ")` which sum to `r sum(ll.censReg)`.
+
+
+## Benchmarking Gauß-Hermite vs Standard numeric integration 
+
+```{r benchm, cache=TRUE, dependson="ex2_sleepstudy2_lme4cens"}
 mbObj <- microbenchmark(optim(par = paramS, fn = myDevFun_f),
                optim(par = paramS, fn = myDevFun_gh_f),
                times = 5L)

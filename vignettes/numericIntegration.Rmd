@@ -69,4 +69,4 @@ microbenchmark(stats::integrate(f = function(x) sqrt(2 * pi*SIGMA2)**-1 * exp(-(
                sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7),
                times = 1000L)
 ```
-The numerical result is `r sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7)`.
+The numerical result (GH, order 7) is `r sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7)`.

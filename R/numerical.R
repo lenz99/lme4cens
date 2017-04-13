@@ -11,9 +11,9 @@
 #' @param ord order of quadrature rule
 #' @param ... additional arguments passed down to integrand function f
 #' @return numeric, approximation of integral
-int_gh <- compiler::cmpfun(function(f, ord=7, ...){
+int_gh <- compiler::cmpfun(function(f, ord=8L, ...){
   ind <- which(ghQuadRule$order == ord)
-  stopifnot( ord >=2, length(ind) == ord )
+  stopifnot( ord >=2L, length(ind) == ord )
 
   xi <- ghQuadRule$abscissa[ind]
   wi <- ghQuadRule$weight[ind]
