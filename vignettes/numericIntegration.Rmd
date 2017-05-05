@@ -70,3 +70,48 @@ microbenchmark(stats::integrate(f = function(x) sqrt(2 * pi*SIGMA2)**-1 * exp(-(
                times = 1000L)
 ```
 The numerical result (GH, order 7) is `r sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7)`.
+
+
+
+
+
+## Benchmarking linear mixed model with censoring
+We use the sleepstudy data and use our implementation of linear mixed models with left- and right-censoring
+and compare Gauß-Hermite vs Standard numeric integration.
+
+```{r benchm, cache=TRUE}
+
+REACT_L <- 212
+REACT_R <- 350
+
+sleepstudy2 %>% 
+  lFormula(Surv(pmin(pmax(Reaction, REACT_L), REACT_R), time2 = Reaction, event = event3,
+                type = "interval") ~ Days + (1|Subject), data = ., REML=FALSE) -> 
+  lForm
+
+
+
+lForm %>% 
+  append(list(verbose=VERBOSE, quadrature = "stats")) %>%
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  
+  myDevFun_f
+
+# Gauss-Hermite quadrature
+lForm %>% 
+  append(list(verbose=VERBOSE, quadrature = "gh")) %>%
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  
+  myDevFun_gh_f
+
+
+# parameter vector
+paramS <- c(260, 5, 3, 2)
+
+
+mbObj <- microbenchmark(optim(par = paramS, fn = myDevFun_f),
+               optim(par = paramS, fn = myDevFun_gh_f),
+               times = 3L)
+##saveRDS(mbObj, file = "~/benchm_ghInt_rInt.rds")
+mbObj
+```

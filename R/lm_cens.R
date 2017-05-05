@@ -1,33 +1,6 @@
 # Censored observations in linear models
 
 
-#' Prepare the survival response.
-#' It uses the interval-coding that supports left-, right- and interval-censoring.
-#' @param y0 response vector of class [survival::Surv].
-#' @return response vector, normalized to interval-coding.
-prepSurvResp <- function(y0) {
-  stopifnot( inherits(y0, what = "Surv") )
-
-  survType <- attr(y0, which = "type")
-
-  if (survType == 'interval') y0 else {
-    yMat <- as.matrix(y0)
-    yTime <- yMat[, "time"]
-    yStat <- yMat[, "status"]
-    censLevel <- if (max(yStat) == 2) 1 else 0
-    isCens <- (yStat == censLevel)
-
-    switch(survType,
-           right={Surv(time  = yTime,
-                       time2 = ifelse(isCens, yes = NA_real_, no = yTime),
-                       type = "interval2")},
-           left={ Surv(time  = ifelse(isCens, yes = NA_real_, no = yTime),
-                       time2 = yTime,
-                       type = "interval2")},
-           stop("this type of censoring is not supported!")
-    )
-  }
-}
 
 
 #' Fit a linear model with censored observations.
@@ -35,7 +8,7 @@ prepSurvResp <- function(y0) {
 #' Residuals are not implemented, yet. What is it for censored observations?
 #' @seealso [stats::lm]
 #' @export
-lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset){
+lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset, start = NULL, ...){
 
   mf <- match.call(expand.dots = FALSE)
   m <- match(x = c("formula", "data", "subset", "weights", "offset"),
@@ -71,7 +44,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset){
   x <- stats::model.matrix(mt, mf, contrasts)
 
 
-  z <- lmcens.fit(x, y, w, offset = offset)
+  z <- lmcens.fit(x, y, w, offset = offset, start = start, ...)
 
 
   # return value ------
@@ -93,14 +66,15 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset){
 #' It uses maximum likelihood famework to come up with estimates.
 #' Optimization via [stats::optim()].
 #'
-#' @param x model matrix
+#' @param x model matrix nxp
 #' @param y response that uses the interval-type censoring
 #' @param w weights vector
 #' @param offset offset vector that is subtracted from the time variable (in
 #'   case of interval-censoring both boundaries are adapted)
+#' @param start optional start vector for parameters (including logg)
 #' @return list with regression fit stuff (e.g. coefficients, fitted.values
 #'   effects, rank, ..)
-lmcens.fit <- function(x, y, w, offset = NULL, tol = 1e-07){
+lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
 
   stopifnot( inherits(y, what = "Surv"), attr(y, which = "type") == "interval" )
 
@@ -137,14 +111,14 @@ lmcens.fit <- function(x, y, w, offset = NULL, tol = 1e-07){
   qr_x <- qr(crossprod(x))
 
 
-  #' negative log-likelihood
-  negLogLikFun <- function(beta){
-    stopifnot( length(beta) == p+1L ) # residual log(σ) as extra parameter
-    linPred <- x %*% beta[1:p]
+  #' negative log-likelihood function to minimize
+  negLogLikFun <- function(paramVect){
+    stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
+    linPred <- x %*% paramVect[1:p]
 
-    resSD <- exp(beta[p+1L])
+    resSD <- exp(paramVect[p+1L])
 
-    - sum(
+    logLiks <- c(
       # point observations
       w[yStat == 1] * dnorm(x = yTime1[yStat == 1], mean = linPred[yStat == 1], sd = resSD, log = TRUE),
       # right cens
@@ -152,26 +126,69 @@ lmcens.fit <- function(x, y, w, offset = NULL, tol = 1e-07){
       # left cens
       w[yStat == 2] * pnorm(q = yTime1[yStat == 2], mean = linPred[yStat == 2], sd = resSD, lower.tail = TRUE, log.p = TRUE),
       # interval cens
-      w[yStat == 3] * (log(pnorm(q = yTime2[yStat == 3], mean = linPred[yStat == 3], sd = resSD) -
-            pnorm(q = yTime1[yStat == 3], mean = linPred[yStat == 3], sd = resSD)))
+      w[yStat == 3] * log( pnorm(q = yTime2[yStat == 3], mean = linPred[yStat == 3], sd = resSD) -
+            pnorm(q = yTime1[yStat == 3], mean = linPred[yStat == 3], sd = resSD) )
     )
+
+    retVal <-   - sum(logLiks)
+    attr(retVal, "loglik.contribs") <- logLiks
+
+    retVal
+  }
+
+  #' gradient of negative log-likelihood function
+  #' @return gradient vector (length = number of parameters)
+  negLogLikGradFun <- function(paramVect){
+    stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
+    linPred <- x %*% paramVect[1:p] # nx1 vector
+
+    resSD <- exp(paramVect[p+1L])
+
+
+    ## XXX Weights??
+
+    # point obs
+    resid_obs <- (yTime1[yStat == 1L] - linPred[yStat == 1L])
+    contrib_obs <- c(crossprod(x[yStat == 1L,], resid_obs)[,1L]/resSD^2, crossprod(resid_obs)/resSD^2-length(resid_obs))
+    # right cens
+    factor_right <- dnorm(x = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD) / pnorm(q = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD, lower.tail = FALSE)
+    contrib_right <- c( crossprod(x[yStat == 0L,], factor_right), -crossprod(yTime1[yStat == 0L] - linPred[yStat == 0L], factor_right) )
+    # left cens
+    factor_left <- - dnorm(x = yTime1[yStat == 2L], mean = linPred[yStat == 2L], sd = resSD) / pnorm(q = yTime1[yStat == 2L], mean = linPred[yStat == 2L], sd = resSD, lower.tail = TRUE)
+    contrib_left <- c( crossprod(x[yStat == 2L,], factor_left), crossprod(yTime1[yStat == 2L] - linPred[yStat == 2L], factor_left) )
+    # interval cens
+    denum_int <- pnorm(q = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, lower.tail = TRUE) - pnorm(q = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, lower.tail = TRUE)
+    contrib_int <- c( crossprod(-x[yStat == 3L,], dnorm(x = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD) - dnorm(x = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD)),
+                      crossprod( -dnorm(x = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD), yTime2[yStat == 3L] - linPred[yStat == 3L]) + crossprod(dnorm(x = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD), yTime1[yStat == 3L] - linPred[yStat == 3L]) ) / denum_int
+
+    - colSums(rbind(contrib_obs, contrib_right, contrib_left, contrib_int), na.rm = TRUE)
   }
 
 
-  # hessian relates to the negative log-likelihood function
-  beta_init <- setNames(c(median(yTime1), rep(0, p)),
-                        c(colnames(x), "lSigma"))
-  optimRes <- optim(par = beta_init, fn = negLogLikFun, hessian = TRUE)
+  beta_init <- if (is.null(start) || ! length(start) %in% c(p, p+1)){
+    setNames(c(median(yTime1), rep(0, p)),
+                          c(colnames(x), "lSigma"))
+  } else {
+    if (length(start) == p) start <- c(start, 0)
+    start
+  }
+
+
+  # optimize the negative log-likelihood function
+  optimRes <- optim(par = beta_init, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
 
   fit_coef <- optimRes$par
   fit_vals <- x %*% fit_coef[1:p]
   if (!is.null(offset))
     fit_vals <- fit_vals + offset
 
-  retVal <- list(coefficients = fit_coef, logLik=-optimRes$value, hess=optimRes$hessian,
-       fitted.values = fit_vals, y=y,
-       rank = p, qr = qr_x,
-       df.residual = NROW(x) - p - 1L)
+  retVal <- list(coefficients = fit_coef, logLik=-optimRes$value,
+                 logLik.contribs = negLogLikFun(fit_coef),
+                 # hessian relates to the negative log-likelihood function
+                 hess=optimRes$hessian,
+                 fitted.values = fit_vals, y=y,
+                 rank = p, qr = qr_x,
+                 df.residual = NROW(x) - p - 1L)
 
   if (weighting) retVal <- append(retVal, values = list(weights = w))
 
@@ -218,9 +235,9 @@ print.summary.lmcens <- function(x, digits = max(3L, getOption("digits") - 3L), 
   coefs <- x$coefficients
   stats::printCoefmat(coefs, digits = digits, na.print = "NA", signif.stars = signif.stars, ...)
 
-  cat("\nResidual standard error:", format(signif(x$sigma, digits)),
+  cat("\nResidual standard error:", format(signif(x$sigma, digits)), "(",format(signif(log(x$sigma), digits)), "on log-scale)",
       "on", rdf, "degrees of freedom\n")
-  cat("Log-Likelihood: ", format(signif(x$logLik, digits)))
+  cat("Log-Likelihood: ", format(signif(x$logLik), digits))
   cat("\n")
 
   cat("\n")

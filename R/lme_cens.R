@@ -1,13 +1,14 @@
 
-#' Objective function closure for LMER-models with censored response.
+#' Produce objective function closure for simple LMER-models with censored response for minimization.
 #'
-#' This implements the objective function for simple scalar models with censoring.
+#' This implements the objective function for simple scalar random effect models with censoring.
 #' It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
 #' It uses ML, REML not implemented.
 #'
 #' @export
 #' @param fr dataframe with response variable in its first column
 #' @param reTrms list with random effect terms
+#' @param quadrature type of numeric integration method
 #' @return objective function which maps the parameters to the corresponding negative log-likelihood
 mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, start = NULL, verbose = 0, quadrature = c("gh", "stats"), ...){
 
@@ -103,7 +104,7 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, start = NULL, v
     switch(quadrature,
            gh = {
               for (i in 1:q){
-                Li[i] <- 1/sqrt(pi) * int_gh(f = function(mu, Ztrow, betwSD, resSD) intFun(mu = sqrt(2) * betwSD * mu, Ztrow, betwSD=betwSD, resSD = resSD),
+                Li[i] <- 1/sqrt(pi) * int_gh(f = function(mu, Ztrow, betwSD, resSD) intFun(mu = sqrt(2) * betwSD * mu, Ztrow, resSD = resSD),
                                              Ztrow = i, betwSD = betwSD, resSD = resSD)
               }
            },
@@ -117,7 +118,10 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, start = NULL, v
     )
 
 
-    -sum(log(Li+.Machine$double.xmin))
+    retVal <- -sum(log(Li+.Machine$double.xmin))
+    attr(retVal, "lik.contribs") <- Li
+
+    retVal
   }
 
   negLogLikFun

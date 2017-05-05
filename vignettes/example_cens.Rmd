@@ -6,6 +6,8 @@ output:
   rmarkdown::html_vignette:
     toc: true
     fig_caption: yes
+params:
+  
 vignette: >
   %\VignetteIndexEntry{Censored Response Examples}
   %\VignetteEngine{knitr::rmarkdown}
@@ -21,8 +23,12 @@ knitr::opts_knit$set(verbose = FALSE)
 options(digits = 3L)
 
 library(survival)
+
 library(lme4cens)
 library(microbenchmark)
+
+library(censReg)
+library(crch)
 
 data("Affairs", package = "lme4cens")
 
@@ -34,25 +40,31 @@ We demonstrate examples for regression analysis for censored observations.
 
 ## Censored observations in the `survival`-package
 `Surv`-objects are used to hold a response value and its status information.
-You provide a `time` and an `event` column. If `event` is missing `Surv` assumes that all subjects have an event.
+You provide a `time` and an `event` column. If `event` is missing (and it is *not* type `interval2`) `Surv` assumes that all subjects have an event.
 It is safest to use logical coding for the `event`-column as the software does not have to guess if 0/1 or 1/2 was used.
 
-A `type`-parameter lets you specify which type of censoring is used:
+A `type`-parameter lets you specify which type of censoring is used. It hence guides the meaning of the censoring:
 
-* `right` censoring means right-censoring (e.g. the unobserved value is greater (right) than `time`. It is default type when there is no `time2` and `event` is _not_ a factor.
+* `right` censoring means right-censoring (e.g. the unobserved value is greater (right) than `time`. It is default type when there is no `time2` and `event` is _not_ a factor. `event` information is used to know which times are real observations, and which are right-censoring times.
 * `left` censoring means left-censoring (e.g. the unobserved value is smaller (left) than `time`).
-* `interval` for interval censorings.
+* `interval` to encode for potentially different kind of censorings in one dataset.
     * `event=0` indicates right-censoring,
+    * `event=1` indicates observed event,
     * `event=2` indicates left-censoring.
     * `event=3` for interval-censoring. Only then it uses the `time2` information.
-* `interval2` for interval censorings. All observations are considered as interval-censored observations and `time2` is always used, e.g.
+* `interval2` for interval censorings. All observations are considered as interval-censored observations and `event`-column is not used but instead, `time2` is always used. To mark infinity, you can use `Inf` or `NA`. `type='interval2'` is easier to code for, internally the stored type of `interval2` is still `interval`.
     * (-Inf, t) for left-censored
     * (t,t) for exact observations
     * (t, Inf) for right-censored
     * (t~1~, t~2~) for interval-censored
-To mark infinity, you can use `Inf` or `NA`. `type='interval2'` is easier to code for, internally the stored type of `interval2` is still `interval`.
 
 `Surv`-objects are implemented as a matrix.
+For instance, four observations with no censoring, left-, right- and interval censoring as represented as a matrix.
+```{r Surv_obj_mat, echo = FALSE}
+survObj <- Surv(time = c(3, -Inf, 3, 3), time2 = c(3, 3, Inf, 5), type = "interval2")
+survObj
+as.matrix(survObj)
+```
 
 
 
@@ -76,6 +88,7 @@ ex_exp_lCens <- data_frame_(list(
 
 
 # efficient calculation of log(1-exp(x))
+# c.f. Martin Maechler
 log1mexp <- function(x){
   stopifnot( x < 0L, is.numeric(x) )
   
@@ -103,26 +116,125 @@ optimize(negLogLik(data = ex_exp_lCens),
 ```
 
 The same result can be achieved via `survival::survreg`:
-The linear predictor η is transformed to λ via 1/exp(-η).
 
 ```{r expLeftCens_survreg}
-survreg(Surv(T, status, type = "left") ~ 1, dist = "exp",
+fm.exp <- survreg(Surv(T, status, type = "left") ~ 1, dist = "exp",
         data = ex_exp_lCens)
+fm.exp
 ```
+
+
+The linear predictor η is transformed to our λ via 1/exp(η),
+i.e. λ = 1/ exp(`r coef(fm.exp)`) = `r exp(-coef(fm.exp))`.
+
+
+
 
 
 
 
 ## Linear Regression with censored observations: Tobit-model
 
-Tobit model uses normal error. Here an example with left-censored response at 0.
+Tobit model uses normal error. In order to compare our fits with fits from other packages we use a fixed censoring value for all observations.
+Here we use the `Affairs`-data as an example with left-censored response at 0.
 
-```{r ex1_lmcens_affairs}
-fm <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating, data = Affairs)
-
-summary(fm)
+We have prepared a column `event` that encodes for the censoring at 0:
+```{r affairs_event_boxplot}
+boxplot(affairs ~ event, data = Affairs, xlab = "Variable 'event'", ylab = "Number of affairs")
 ```
 
+### Simple regression
+We start with a single predictor `yearsmarried`.
+```{r affairs_simple_lmcens}
+fm.simple.aff <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried, data = Affairs)
+summary(fm.simple.aff)
+```
+
+We compare the output with the fit from `censReg`.
+```{r affairs_simple_censReg, echo = FALSE}
+fm.simple.aff.censreg <- censReg(affairs ~ yearsmarried, left = 0L, data = Affairs)
+
+summary(fm.simple.aff.censreg)
+```
+
+The results of both model fitting routines do agree.
+
+
+
+### Multiple regression
+```{r affairs_multiple_lmcens}
+fm.aff <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                 data = Affairs)
+
+summary(fm.aff)
+```
+
+
+
+#### Multiple Tobit model with `censReg`
+We compare the results with the output of `censReg`, using the default Nelder-Mead optimization method.
+
+```{r affairs_multiple_censReg__NelderMead}
+fm.aff.censreg <- censReg(affairs ~ age + yearsmarried + religiousness + occupation + rating, 
+                          left = 0L,
+                          data = Affairs)
+
+summary(fm.aff.censreg)
+```
+
+The coefficients are vastly different, although the log-likelihood is similar.
+
+We use the BFGS-optimization method for the same model:
+```{r affairs_multiple_censReg}
+fm.aff.censreg.bfgs <- censReg(affairs ~ age + yearsmarried + religiousness + occupation + rating, 
+                          left = 0L,
+                          method = "BFGS",
+                          data = Affairs)
+summary(fm.aff.censreg.bfgs)
+```
+
+
+We look into the log-likelihood contributions per observations between the two models with coefficients 
+as estimated by `lmcens`. We need to sort them as appraently the order is different.
+
+```{r ex1_compare_logLiks}
+llContribs <- attr(fm.aff$logLik.contribs, "loglik.contribs")
+llContribs.censreg <- update(fm.aff.censreg, start = coef(fm.aff), logLikOnly = TRUE)
+
+MASS::eqscplot(x = sort(llContribs), y = sort(llContribs.censreg)); abline(0,1, col = "grey", lty = 2)
+```
+
+The log-likelihood for the optimal fit from `lmcens` is calculated by `censReg` as `r sum(llContribs.censreg)`.
+
+
+When we start our `lmcens` with the parameter estimates of `censReg` (rounded on 1 digit) we get:
+```{r ex1_lmcens_affairs_censRegStart}
+fm.aff2 <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                  start = round(coef(fm.aff.censreg),3),
+                  data = Affairs)
+
+summary(fm.aff2)
+```
+
+We plot the log-likelihood contributions from our fitted `lmcens`-model with start parameters coming from `censReg`-fit and also calculate these contributions via the `censReg`-package.
+
+```{r ex1_compare_logLiks2}
+llContribs2 <- attr(fm.aff2$logLik.contribs, "loglik.contribs")
+llContribs2.censreg <- update(fm.aff.censreg, start = coef(fm.aff2), logLikOnly = TRUE)
+
+MASS::eqscplot(x = sort(llContribs2), y = sort(llContribs2.censreg)); abline(0,1, col = "grey", lty = 2)
+```
+
+
+
+### Tobit Model with `crch`
+
+```{r ex1_crch_affairs}
+
+fm.crch.aff <- crch(affairs ~ age + yearsmarried + religiousness + occupation + rating,
+                    data = Affairs, left = 0, dist = "gaussian")
+summary(fm.crch.aff)
+```
 
 
 ### With weights
@@ -185,10 +297,12 @@ paramEst
 ```
 
 
+
+### Comparison with `censReg`
+
 We compare it with the results of `censReg` on the same data.
 
 ```{r ex2_sleepstudy2_censReg, message = FALSE}
-library(censReg)
 
 sleepstudy2 %>% 
   dplyr::mutate_(Reaction = ~ pmin(pmax(Reaction, REACT_L), REACT_R))  %>% 
@@ -223,20 +337,18 @@ The variance components change in comparison to the given initial optimal `censR
 ```{r ex2_sleepstudy2_censRegLL, echo = FALSE}
 ll.censReg <- censReg::censReg(Reaction ~ as.numeric(Days), left = REACT_L, right = REACT_R, start = paramEst$par, logLikOnly = TRUE, nGHQ = 8L,
                                data = sleepstudy2.cr)
+
+nll.lme4cens <- myDevFun_gh_f(param = paramEst$par)
+nll.lme4cens.numIntStats <- myDevFun_f(param = paramEst$par)
 ```
 
-Vice versa, we check the log-likelihood at the optimal fit value of our own implementation. `censReg` calculates the log-likelihood contributions per subject,
-together with its gradient: the contributions are
-`r paste(round(ll.censReg, 1), collapse = ", ")` which sum to `r sum(ll.censReg)`.
+Vice versa, we check the log-likelihood at the _optimal fit_ of our own implementation.
+`censReg` calculates the log-likelihood contributions per subject, together with its gradient.
+The log-likelihood contributions are `r paste(round(ll.censReg, 2), collapse = ", ")` which sum to `r sum(ll.censReg)`.
+Our implementation using GH-quadrature at the same start vector gives a log-likelihood of `r -nll.lme4cens` with subject-contributions `r paste(round(log(attr(nll.lme4cens, "lik.contribs")), 2), collapse = ", ")`.
+When using numeric integration from `stats`-package we get :
+`r -nll.lme4cens.numIntStats` with subject-contributions `r paste(round(log(attr(nll.lme4cens.numIntStats, "lik.contribs")), 2), collapse = ", ")`
 
 
-## Benchmarking Gauß-Hermite vs Standard numeric integration 
 
-```{r benchm, cache=TRUE, dependson="ex2_sleepstudy2_lme4cens"}
-mbObj <- microbenchmark(optim(par = paramS, fn = myDevFun_f),
-               optim(par = paramS, fn = myDevFun_gh_f),
-               times = 5L)
-##saveRDS(mbObj, file = "~/benchm_ghInt_rInt.rds")
-mbObj
-```
 
