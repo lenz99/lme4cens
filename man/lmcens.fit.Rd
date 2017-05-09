@@ -4,10 +4,10 @@
 \alias{lmcens.fit}
 \title{Internal workhorse function for linear regression with censored observations.}
 \usage{
-lmcens.fit(x, y, w, offset = NULL, tol = 1e-07)
+lmcens.fit(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...)
 }
 \arguments{
-\item{x}{model matrix}
+\item{x}{model matrix nxp}
 
 \item{y}{response that uses the interval-type censoring}
 
@@ -15,11 +15,20 @@ lmcens.fit(x, y, w, offset = NULL, tol = 1e-07)
 
 \item{offset}{offset vector that is subtracted from the time variable (in
 case of interval-censoring both boundaries are adapted)}
+
+\item{start}{optional start vector for parameters (including logg)}
 }
 \value{
 list with regression fit stuff (e.g. coefficients, fitted.values
 effects, rank, ..)
-negative log-likelihood
+negative log-likelihood function to minimize.
+weights are applied to the log-likelihood contributions.
+
+negative log-likelihood for given parameter vector for data sample, with positive likelihood contribution of individual observations as attribute
+gradient of negative log-likelihood function
+weights are on the log-likelihood scale
+
+gradient numeric vector of length equal to number of parameters
 }
 \description{
 It uses maximum likelihood famework to come up with estimates.

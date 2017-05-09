@@ -111,7 +111,9 @@ lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
   qr_x <- qr(crossprod(x))
 
 
-  #' negative log-likelihood function to minimize
+  #' negative log-likelihood function to minimize.
+  #' weights are applied to the log-likelihood contributions.
+  #' @return negative log-likelihood for given parameter vector for data sample, with positive likelihood contribution of individual observations as attribute
   negLogLikFun <- function(paramVect){
     stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
     linPred <- x %*% paramVect[1:p]
@@ -120,13 +122,13 @@ lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
 
     logLiks <- c(
       # point observations
-      w[yStat == 1] * dnorm(x = yTime1[yStat == 1], mean = linPred[yStat == 1], sd = resSD, log = TRUE),
+      w[yStat == 1L] * dnorm(x = yTime1[yStat == 1], mean = linPred[yStat == 1], sd = resSD, log = TRUE),
       # right cens
-      w[yStat == 0] * pnorm(q = yTime1[yStat == 0], mean = linPred[yStat == 0], sd = resSD, lower.tail = FALSE, log.p = TRUE),
+      w[yStat == 0L] * pnorm(q = yTime1[yStat == 0], mean = linPred[yStat == 0], sd = resSD, lower.tail = FALSE, log.p = TRUE),
       # left cens
-      w[yStat == 2] * pnorm(q = yTime1[yStat == 2], mean = linPred[yStat == 2], sd = resSD, lower.tail = TRUE, log.p = TRUE),
+      w[yStat == 2L] * pnorm(q = yTime1[yStat == 2], mean = linPred[yStat == 2], sd = resSD, lower.tail = TRUE, log.p = TRUE),
       # interval cens
-      w[yStat == 3] * log( pnorm(q = yTime2[yStat == 3], mean = linPred[yStat == 3], sd = resSD) -
+      w[yStat == 3L] * log( pnorm(q = yTime2[yStat == 3], mean = linPred[yStat == 3], sd = resSD) -
             pnorm(q = yTime1[yStat == 3], mean = linPred[yStat == 3], sd = resSD) )
     )
 
@@ -137,7 +139,8 @@ lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
   }
 
   #' gradient of negative log-likelihood function
-  #' @return gradient vector (length = number of parameters)
+  #' weights are on the log-likelihood scale
+  #' @return gradient numeric vector of length equal to number of parameters
   negLogLikGradFun <- function(paramVect){
     stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
     linPred <- x %*% paramVect[1:p] # nx1 vector
@@ -145,26 +148,27 @@ lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
     resSD <- exp(paramVect[p+1L])
 
 
-    ## XXX Weights??
 
     # point obs
-    resid_obs <- (yTime1[yStat == 1L] - linPred[yStat == 1L])
-    contrib_obs <- c(crossprod(x[yStat == 1L,], resid_obs)[,1L]/resSD^2, crossprod(resid_obs)/resSD^2-length(resid_obs))
+    resid_obs <- (yTime1[yStat == 1L] - linPred[yStat == 1L])  # weights not fused here with the resid_obs-vector as it is used as sum-of-square and would be squared
+    contrib_obs <- c(crossprod(x[yStat == 1L,], w[yStat == 1L] * resid_obs)[,1L] / resSD^2, crossprod(w[yStat == 1L] * resid_obs, resid_obs) / resSD^2 - sum(w[yStat == 1L]))
     # right cens
-    factor_right <- dnorm(x = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD) / pnorm(q = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD, lower.tail = FALSE)
+    factor_right <- w[yStat == 0L] * dnorm(x = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD) / pnorm(q = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD, lower.tail = FALSE)
     contrib_right <- c( crossprod(x[yStat == 0L,], factor_right), -crossprod(yTime1[yStat == 0L] - linPred[yStat == 0L], factor_right) )
     # left cens
-    factor_left <- - dnorm(x = yTime1[yStat == 2L], mean = linPred[yStat == 2L], sd = resSD) / pnorm(q = yTime1[yStat == 2L], mean = linPred[yStat == 2L], sd = resSD, lower.tail = TRUE)
+    factor_left <- - w[yStat == 2L] * dnorm(x = yTime1[yStat == 2L], mean = linPred[yStat == 2L], sd = resSD) / pnorm(q = yTime1[yStat == 2L], mean = linPred[yStat == 2L], sd = resSD, lower.tail = TRUE)
     contrib_left <- c( crossprod(x[yStat == 2L,], factor_left), crossprod(yTime1[yStat == 2L] - linPred[yStat == 2L], factor_left) )
     # interval cens
-    denum_int <- pnorm(q = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, lower.tail = TRUE) - pnorm(q = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, lower.tail = TRUE)
-    contrib_int <- c( crossprod(-x[yStat == 3L,], dnorm(x = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD) - dnorm(x = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD)),
-                      crossprod( -dnorm(x = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD), yTime2[yStat == 3L] - linPred[yStat == 3L]) + crossprod(dnorm(x = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD), yTime1[yStat == 3L] - linPred[yStat == 3L]) ) / denum_int
+    factor_int <- w[yStat == 3L] / (pnorm(q = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, lower.tail = TRUE) - pnorm(q = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, lower.tail = TRUE))
+    contrib_int <- c( crossprod(-x[yStat == 3L,], (dnorm(x = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD) - dnorm(x = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD)) * factor_int),
+                      crossprod( -dnorm(x = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD), (yTime2[yStat == 3L] - linPred[yStat == 3L])*factor_int) +
+                        crossprod(dnorm(x = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD), (yTime1[yStat == 3L] - linPred[yStat == 3L])*factor_int) )
 
     - colSums(rbind(contrib_obs, contrib_right, contrib_left, contrib_int), na.rm = TRUE)
   }
 
 
+  # start values ----
   beta_init <- if (is.null(start) || ! length(start) %in% c(p, p+1)){
     setNames(c(median(yTime1), rep(0, p)),
                           c(colnames(x), "lSigma"))

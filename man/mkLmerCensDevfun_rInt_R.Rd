@@ -2,20 +2,23 @@
 % Please edit documentation in R/lme_cens.R
 \name{mkLmerCensDevfun_rInt_R}
 \alias{mkLmerCensDevfun_rInt_R}
-\title{Objective function closure for LMER-models with censored response.}
+\title{Produce objective function closure for simple LMER-models with censored response for minimization.}
 \usage{
-mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = TRUE, start = NULL,
-  verbose = 0, quadrature = c("stats", "gh"), ...)
+mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, start = NULL,
+  verbose = 0, quadrature = c("gh", "stats"), ...)
 }
 \arguments{
 \item{fr}{dataframe with response variable in its first column}
 
 \item{reTrms}{list with random effect terms}
+
+\item{quadrature}{type of numeric integration method}
 }
 \value{
-objective function which maps the covariance parameters theta to the corresponding restricted deviance
+objective function which maps the parameters to the corresponding negative log-likelihood
 }
 \description{
-This implements the objective function for simple scalar models with censoring.
+This implements the objective function for simple scalar random effect models with censoring.
 It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
+It uses ML, REML not implemented.
 }

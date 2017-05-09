@@ -10,3 +10,24 @@
 #
 #   invisible()
 # }
+
+
+
+
+
+
+#' Efficient calculation of log(1-exp(x)).
+#'
+#' useful for some likelihood calculations, e.g. exponential distribution with left-censoring.
+#' @param x numeric, non-positive values
+#' @seealso Martin Maechler
+#' @export
+log1mexp <- function(x){
+  stopifnot( all(x <= 0L), is.numeric(x) )
+
+  log1pBranch <- x < -log(2)
+  x[log1pBranch] <- log1p(-exp(x[log1pBranch]))
+  x[!log1pBranch] <- log(-expm1(x[!log1pBranch]))
+
+  x
+}

@@ -68,13 +68,11 @@ as.matrix(survObj)
 
 
 
+
 ## Exponential distribution
-We generate random data (event and independently censoring) from a Weibull distribution.
-The left-censoring does not allow for an easy analytic solution. Hence, we do an own numeric likelihood maximization.
+We generate random data (both, event and censoring independent of each other) from a Weibull distribution.
 
-The data (event- and the censoring process) are generated via Weibull distributions.
-
-```{r expLeftCens}
+```{r expLeftCens_data}
 set.seed(123L)
 N <- 230L
 λ <- 1.8
@@ -85,29 +83,25 @@ ex_exp_lCens <- data_frame_(list(
   T = ~ pmax(X, Cl),
   status = ~ as.numeric(X >= Cl)
 ))
+```
 
 
-# efficient calculation of log(1-exp(x))
-# c.f. Martin Maechler
-log1mexp <- function(x){
-  stopifnot( x < 0L, is.numeric(x) )
-  
-  log1pBranch <- x < -log(2)
-  x[log1pBranch] <- log1p(-exp(x[log1pBranch]))
-  x[!log1pBranch] <- log(-expm1(x[!log1pBranch]))
-  
-  x
-}
+The left-censoring does not allow for an easy analytic solution. Hence, we do an own numeric likelihood maximization.
+We use a factory function `negLogLik` that --given a data sample-- produces a negative likelihood function.
+`optimize` is R's standard function for 1-dimensional optimization.
+
+```{r expLeftCens_logLik}
 
 # factory method for negative log-likelihood function
+# function log1mexp efficiently calculates log(1-exp(x))
 negLogLik <- function(data){
   stopifnot( is.data.frame(data), all(c("T", "status") %in% names(data)) )
   
   nbrEvents <- sum(data$status)
   eventIdx <- data$status == 1L
   
-  function(l)
-    - nbrEvents * log(l) + l * sum(data$T[eventIdx]) - sum(log1mexp(-l * data$T[!eventIdx]))
+  function(λ)
+    - nbrEvents * log(λ) + λ * sum(data$T[eventIdx]) - sum(lme4cens::log1mexp(-λ * data$T[!eventIdx]))
 }
 
 
@@ -143,11 +137,18 @@ We have prepared a column `event` that encodes for the censoring at 0:
 boxplot(affairs ~ event, data = Affairs, xlab = "Variable 'event'", ylab = "Number of affairs")
 ```
 
+
 ### Simple regression
-We start with a single predictor `yearsmarried`.
+We start with a single predictor `yearsmarried`. We use default Nelder-Mead and BFGS with gradient.
+
 ```{r affairs_simple_lmcens}
-fm.simple.aff <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried, data = Affairs)
-summary(fm.simple.aff)
+fm.aff.simple <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried, data = Affairs)
+summary(fm.aff.simple)
+
+fm.aff.simple.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried,
+                             method = "BFGS",
+                             data = Affairs)
+summary(fm.aff.simple.bfgs)
 ```
 
 We compare the output with the fit from `censReg`.
@@ -161,7 +162,9 @@ The results of both model fitting routines do agree.
 
 
 
+
 ### Multiple regression
+We use Nelder-Mead optimization by default.
 ```{r affairs_multiple_lmcens}
 fm.aff <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
                  data = Affairs)
@@ -170,9 +173,23 @@ summary(fm.aff)
 ```
 
 
+When we use the BFGS-optimization method for the same model:
+
+```{r affairs_multiple_censReg}
+fm.aff.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                      method = "BFGS",
+                      data = Affairs)
+
+summary(fm.aff.bfgs)
+```
+
+The fit is erroneous!!
+We get very different coefficients, although the log-likelihood is similar.
+
+
 
 #### Multiple Tobit model with `censReg`
-We compare the results with the output of `censReg`, using the default Nelder-Mead optimization method.
+We compare our results with the output of `censReg`.
 
 ```{r affairs_multiple_censReg__NelderMead}
 fm.aff.censreg <- censReg(affairs ~ age + yearsmarried + religiousness + occupation + rating, 
@@ -182,20 +199,14 @@ fm.aff.censreg <- censReg(affairs ~ age + yearsmarried + religiousness + occupat
 summary(fm.aff.censreg)
 ```
 
-The coefficients are vastly different, although the log-likelihood is similar.
-
-We use the BFGS-optimization method for the same model:
-```{r affairs_multiple_censReg}
-fm.aff.censreg.bfgs <- censReg(affairs ~ age + yearsmarried + religiousness + occupation + rating, 
-                          left = 0L,
-                          method = "BFGS",
-                          data = Affairs)
-summary(fm.aff.censreg.bfgs)
-```
+The coefficients currently do not coincide with the results of our `BFGS`-fit!!
 
 
-We look into the log-likelihood contributions per observations between the two models with coefficients 
-as estimated by `lmcens`. We need to sort them as appraently the order is different.
+
+
+We look into the log-likelihood contributions per observations between the two fits when we fit with coefficients 
+as estimated by Nelder-Mead at `lmcens`.
+We need to sort them as appraently the order is different??!!
 
 ```{r ex1_compare_logLiks}
 llContribs <- attr(fm.aff$logLik.contribs, "loglik.contribs")
@@ -207,7 +218,7 @@ MASS::eqscplot(x = sort(llContribs), y = sort(llContribs.censreg)); abline(0,1, 
 The log-likelihood for the optimal fit from `lmcens` is calculated by `censReg` as `r sum(llContribs.censreg)`.
 
 
-When we start our `lmcens` with the parameter estimates of `censReg` (rounded on 1 digit) we get:
+When we start our `lmcens` with the parameter estimates of `censReg` (rounded on 1 digit) using Nelder-Mead we stay in that optimum region and get very similar results:
 ```{r ex1_lmcens_affairs_censRegStart}
 fm.aff2 <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
                   start = round(coef(fm.aff.censreg),3),
@@ -236,24 +247,37 @@ fm.crch.aff <- crch(affairs ~ age + yearsmarried + religiousness + occupation + 
 summary(fm.crch.aff)
 ```
 
+The package `crch` also coincides with the default fit from `censReg`.
+
+
 
 ### With weights
 
 We explicitly give higher weight to cases with positive religiousness and positive number of affairs.
 The resulting coefficient for `religiousness` changes accordingly.
 
-```{r ex1_lmcens_affairs_w}
 
+```{r affairs_lmcens_w}
 wPos <- with(Affairs, which(affairs > 1 & religiousness > 2))
-w <- rep(1L, 601)
+w <- rep(1L, NROW(Affairs))
 w[wPos] <- 2.5
 
 
-fmw <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+fm.aff.w.nm <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
               weights = w, data = Affairs)
-summary(fmw)
+summary(fm.aff.w.nm)
 ```
 
+
+We check the results from `BFGS`-fitting:
+```{r affairs_lmcens_w_bfgs}
+
+
+fm.aff.w.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                        method = "BFGS",
+                        weights = w, data = Affairs)
+summary(fm.aff.w.bfgs)
+```
 
 
 

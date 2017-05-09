@@ -3,9 +3,8 @@
 \docType{data}
 \name{sleepstudy2}
 \alias{sleepstudy2}
-\title{Balanced subset of Sleepstudy with only four patients, including censoring information (event2)
-For testing purposes.}
-\format{An object of class \code{data.frame} with 40 rows and 4 columns.}
+\title{Balanced subset of Sleepstudy with only four patients, including censoring information (event2).}
+\format{An object of class \code{data.frame} with 40 rows and 5 columns.}
 \source{
 lme4 package
 }
@@ -13,7 +12,13 @@ lme4 package
 sleepstudy2
 }
 \description{
-Balanced subset of Sleepstudy with only four patients, including censoring information (event2)
-For testing purposes.
+Balanced subset of Sleepstudy with only four patients, including censoring information (event2).
+}
+\details{
+For testing purposes with \code{interval}-type censoring status
+\itemize{
+\item \code{event2} \link{numeric} status variable
+\item \code{event3} \link{numeric} status variable with clear-cut censoring boundaries (<312 L and > 350 R)
+}
 }
 \keyword{datasets}

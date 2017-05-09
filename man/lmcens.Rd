@@ -4,7 +4,8 @@
 \alias{lmcens}
 \title{Fit a linear model with censored observations.}
 \usage{
-lmcens(formula, data, subset, weights, contrasts = NULL, offset)
+lmcens(formula, data, subset, weights, contrasts = NULL, offset,
+  start = NULL, ...)
 }
 \description{
 Residuals are not implemented, yet. What is it for censored observations?

@@ -4,7 +4,7 @@
 \alias{int_gh}
 \title{Numeric integration with Gauss-Hermite quadrature.}
 \usage{
-int_gh(f, ord = 7, ...)
+int_gh(f, ord = 8L, ...)
 }
 \arguments{
 \item{f}{constant or function to be integrated after factoring out the weight function w = exp(-x^2), vectorized in its variable of integration}
