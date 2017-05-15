@@ -16,7 +16,7 @@
 
 
 
-#' Efficient calculation of log(1-exp(x)).
+#' Efficient calculation of \code{log(1-exp(x))}.
 #'
 #' useful for some likelihood calculations, e.g. exponential distribution with left-censoring.
 #' @param x numeric, non-positive values

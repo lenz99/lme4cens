@@ -71,7 +71,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset, sta
 #' @param w weights vector
 #' @param offset offset vector that is subtracted from the time variable (in
 #'   case of interval-censoring both boundaries are adapted)
-#' @param start optional start vector for parameters (including logg)
+#' @param start optional start vector for parameters (including log(σ))
 #' @return list with regression fit stuff (e.g. coefficients, fitted.values
 #'   effects, rank, ..)
 lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){

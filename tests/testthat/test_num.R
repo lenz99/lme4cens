@@ -13,3 +13,4 @@ test_that("Gauss-Hermite Quadrature", {
                sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7), tolerance = 1e-5)
 })
 
+
