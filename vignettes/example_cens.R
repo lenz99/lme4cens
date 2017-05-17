@@ -81,19 +81,19 @@ fm.aff <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + reli
 
 summary(fm.aff)
 
+## ----affairs_multiple_censReg--------------------------------------------
+fm.aff.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                      method = "BFGS",
+                      data = Affairs)
+
+summary(fm.aff.bfgs)
+
 ## ----affairs_multiple_censReg__NelderMead--------------------------------
 fm.aff.censreg <- censReg(affairs ~ age + yearsmarried + religiousness + occupation + rating, 
                           left = 0L,
                           data = Affairs)
 
 summary(fm.aff.censreg)
-
-## ----affairs_multiple_censReg--------------------------------------------
-fm.aff.censreg.bfgs <- censReg(affairs ~ age + yearsmarried + religiousness + occupation + rating, 
-                          left = 0L,
-                          method = "BFGS",
-                          data = Affairs)
-summary(fm.aff.censreg.bfgs)
 
 ## ----ex1_compare_logLiks-------------------------------------------------
 llContribs <- attr(fm.aff$logLik.contribs, "loglik.contribs")
@@ -120,16 +120,23 @@ fm.crch.aff <- crch(affairs ~ age + yearsmarried + religiousness + occupation + 
                     data = Affairs, left = 0, dist = "gaussian")
 summary(fm.crch.aff)
 
-## ----ex1_lmcens_affairs_w------------------------------------------------
-
+## ----affairs_lmcens_w----------------------------------------------------
 wPos <- with(Affairs, which(affairs > 1 & religiousness > 2))
-w <- rep(1L, 601)
+w <- rep(1L, NROW(Affairs))
 w[wPos] <- 2.5
 
 
-fmw <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+fm.aff.w.nm <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
               weights = w, data = Affairs)
-summary(fmw)
+summary(fm.aff.w.nm)
+
+## ----affairs_lmcens_w_bfgs-----------------------------------------------
+
+
+fm.aff.w.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                        method = "BFGS",
+                        weights = w, data = Affairs)
+summary(fm.aff.w.bfgs)
 
 ## ----ex2_sleepstudy2_lme4cens--------------------------------------------
 REACT_L <- 212

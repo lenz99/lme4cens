@@ -4,8 +4,16 @@
 \alias{lmcens}
 \title{Fit a linear model with censored observations.}
 \usage{
-lmcens(formula, data, subset, weights, contrasts = NULL, offset,
+lmcens(formula, data, subset, weights, contrasts = NULL, offset = NULL,
   start = NULL, ...)
+}
+\arguments{
+\item{offset}{offset vector that is subtracted from the time variable (in
+case of interval-censoring both boundaries are adapted)}
+}
+\value{
+list with regression fit stuff (e.g. coefficients, fitted.values
+effects, rank, ..)
 }
 \description{
 Residuals are not implemented, yet. What is it for censored observations?

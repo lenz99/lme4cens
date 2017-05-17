@@ -2,7 +2,7 @@
 % Please edit documentation in R/zzz.R
 \name{log1mexp}
 \alias{log1mexp}
-\title{Efficient calculation of log(1-exp(x)).}
+\title{Efficient calculation of \code{log(1-exp(x))}.}
 \usage{
 log1mexp(x)
 }

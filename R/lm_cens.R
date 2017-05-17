@@ -7,8 +7,12 @@
 #'
 #' Residuals are not implemented, yet. What is it for censored observations?
 #' @seealso [stats::lm]
+#' @param offset offset vector that is subtracted from the time variable (in
+#'   case of interval-censoring both boundaries are adapted)
+#' @return list with regression fit stuff (e.g. coefficients, fitted.values
+#'   effects, rank, ..)
 #' @export
-lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset, start = NULL, ...){
+lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NULL, start = NULL, ...){
 
   mf <- match.call(expand.dots = FALSE)
   m <- match(x = c("formula", "data", "subset", "weights", "offset"),
@@ -29,6 +33,22 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset, sta
   # response variable ------
   y <- prepSurvResp(stats::model.response(mf, type = "any"))
 
+  stopifnot( inherits(y, what = "Surv"), attr(y, which = "type") == "interval" )
+
+  yMat <- as.matrix(y)
+  stopifnot( identical(colnames(yMat), c("time1", "time2", "status")) )
+
+  n <- NROW(yMat)
+  yTime1 <- yMat[, "time1"]
+  yTime2 <- yMat[, "time2"]
+  yStat <- yMat[, "status"]
+
+  # apply offset to y-variable
+  if (!is.null(offset)){
+    yTime1 <- yTime1 - offset
+    yTime2 <- yTime2 - offset
+  }
+
 
   w <- stats::model.weights(mf)
   if (! is.null(w) && !is.numeric(w))
@@ -43,11 +63,46 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset, sta
   # model matrix ------
   x <- stats::model.matrix(mt, mf, contrasts)
 
+  p <- NCOL(x)
 
-  z <- lmcens.fit(x, y, w, offset = offset, start = start, ...)
+  negLogLikFun <- lmcens.objFun(x, yTime1, yTime2, yStat, w)
+  negLogLikGradFun <- attr(negLogLikFun, "grad")
+
+
+  # start values ----
+  beta_init <- if (is.null(start) || ! length(start) %in% c(p, p+1L)){
+    setNames(c(median(yTime1), rep(0L, p)),
+             c(colnames(x), "lSigma"))
+  } else {
+    if (length(start) == p) start <- c(start, 0L)
+    start
+  }
+
+
+  # optimize the negative log-likelihood function
+  optimRes <- optim(par = beta_init, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
+
+
+  fit_coef <- optimRes$par
+  fit_vals <- x %*% fit_coef[1:p]
+  if (!is.null(offset))
+    fit_vals <- fit_vals + offset
+
 
 
   # return value ------
+  z <- list(coefficients = fit_coef, logLik=-optimRes$value,
+            logLik.contribs = negLogLikFun(fit_coef),
+            # hessian relates to the negative log-likelihood function
+            hess=optimRes$hessian,
+            fitted.values = fit_vals, y=y,
+            rank = p, qr = qr(crossprod(x)),
+            df.residual = NROW(x) - p - 1L,
+            negLogLikFun = negLogLikFun)
+
+  if (! is.null(w)) z <- append(z, values = list(weights = w))
+
+
   class(z) <- c("lmcens", "lm")
   z$offset <- offset
   z$contrasts <- attr(x, "contrasts")
@@ -61,44 +116,26 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset, sta
 }
 
 
-#' Internal workhorse function for linear regression with censored observations.
+#' Factory method to create the objective function for linear regression with censored observations.
 #'
-#' It uses maximum likelihood famework to come up with estimates.
+#' It is the negative log-likelihood function. Analytical gradient is provided.
 #' Optimization via [stats::optim()].
 #'
 #' @param x model matrix nxp
-#' @param y response that uses the interval-type censoring
+#' @param yTime1 first response time
+#' @param yTime2 second response time
+#' @param yStat status variable in interval style
 #' @param w weights vector
-#' @param offset offset vector that is subtracted from the time variable (in
-#'   case of interval-censoring both boundaries are adapted)
-#' @param start optional start vector for parameters (including log(σ))
-#' @return list with regression fit stuff (e.g. coefficients, fitted.values
-#'   effects, rank, ..)
-lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
+#' @return negative log-likelihood as objective function
+#' @export
+lmcens.objFun <- function(x, yTime1, yTime2, yStat, w){
 
-  stopifnot( inherits(y, what = "Surv"), attr(y, which = "type") == "interval" )
-
-  yMat <- as.matrix(y)
-  stopifnot( identical(colnames(yMat), c("time1", "time2", "status")) )
-
-
-  n <- NROW(yMat)
-  yTime1 <- yMat[, "time1"]
-  yTime2 <- yMat[, "time2"]
-  yStat <- yMat[, "status"]
-
-  # apply offset to y-variable
-  if (!is.null(offset)){
-    yTime1 <- yTime1 - offset
-    yTime2 <- yTime2 - offset
-  }
-
+  n <- length(yTime1)
 
   # weights -----
   weighting <- ! missing(w) && ! is.null(w)
   if ( weighting ){
-    if (any(w < 0 | is.na(w)))
-      stop("missing or negative weights not allowed")
+    if (any(w < 0 | is.na(w))) stop("missing or negative weights not allowed")
 
   } else {
     w <- rep(1L, n)
@@ -108,7 +145,6 @@ lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
   stopifnot( length(w) == n )
 
   p <- NCOL(x)
-  qr_x <- qr(crossprod(x))
 
 
   #' negative log-likelihood function to minimize.
@@ -167,36 +203,9 @@ lmcens.fit <- function(x, y, w, offset = NULL, start = NULL, tol = 1e-07, ...){
     - colSums(rbind(contrib_obs, contrib_right, contrib_left, contrib_int), na.rm = TRUE)
   }
 
+  attr(negLogLikFun, "grad") <- negLogLikGradFun
 
-  # start values ----
-  beta_init <- if (is.null(start) || ! length(start) %in% c(p, p+1)){
-    setNames(c(median(yTime1), rep(0, p)),
-                          c(colnames(x), "lSigma"))
-  } else {
-    if (length(start) == p) start <- c(start, 0)
-    start
-  }
-
-
-  # optimize the negative log-likelihood function
-  optimRes <- optim(par = beta_init, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
-
-  fit_coef <- optimRes$par
-  fit_vals <- x %*% fit_coef[1:p]
-  if (!is.null(offset))
-    fit_vals <- fit_vals + offset
-
-  retVal <- list(coefficients = fit_coef, logLik=-optimRes$value,
-                 logLik.contribs = negLogLikFun(fit_coef),
-                 # hessian relates to the negative log-likelihood function
-                 hess=optimRes$hessian,
-                 fitted.values = fit_vals, y=y,
-                 rank = p, qr = qr_x,
-                 df.residual = NROW(x) - p - 1L)
-
-  if (weighting) retVal <- append(retVal, values = list(weights = w))
-
-  retVal
+  negLogLikFun
 }
 
 
