@@ -156,17 +156,20 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w){
 
     resSD <- exp(paramVect[p+1L])
 
-    logLiks <- c(
-      # point observations
-      w[yStat == 1L] * dnorm(x = yTime1[yStat == 1], mean = linPred[yStat == 1], sd = resSD, log = TRUE),
-      # right cens
-      w[yStat == 0L] * pnorm(q = yTime1[yStat == 0], mean = linPred[yStat == 0], sd = resSD, lower.tail = FALSE, log.p = TRUE),
-      # left cens
-      w[yStat == 2L] * pnorm(q = yTime1[yStat == 2], mean = linPred[yStat == 2], sd = resSD, lower.tail = TRUE, log.p = TRUE),
-      # interval cens
-      w[yStat == 3L] * log( pnorm(q = yTime2[yStat == 3], mean = linPred[yStat == 3], sd = resSD) -
-            pnorm(q = yTime1[yStat == 3], mean = linPred[yStat == 3], sd = resSD) )
-    )
+
+    logLiks <- numeric(length = length(yStat))
+
+    # point observations
+    logLiks[yStat == 1L] <- w[yStat == 1L] * dnorm(x = yTime1[yStat == 1L], mean = linPred[yStat == 1L], sd = resSD, log = TRUE)
+    # right cens
+    logLiks[yStat == 0L] <- w[yStat == 0L] * pnorm(q = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD, lower.tail = FALSE, log.p = TRUE)
+    # left cens
+    logLiks[yStat == 2L] <- w[yStat == 2L] * pnorm(q = yTime1[yStat == 2L], mean = linPred[yStat == 2L], sd = resSD, lower.tail = TRUE, log.p = TRUE)
+    # interval cens
+    ln_t2_intCens <- pnorm(q = yTime2[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, log.p = TRUE)
+    ln_t1_intCens <- pnorm(q = yTime1[yStat == 3L], mean = linPred[yStat == 3L], sd = resSD, log.p = TRUE)
+    logLiks[yStat == 3L] <- w[yStat == 3L] * (ln_t2_intCens + log1mexp(ln_t1_intCens - ln_t2_intCens))
+
 
     retVal <-   - sum(logLiks)
     attr(retVal, "loglik.contribs") <- logLiks

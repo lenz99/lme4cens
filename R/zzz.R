@@ -31,3 +31,10 @@ log1mexp <- function(x){
 
   x
 }
+
+#' Calculates log(x+y)
+#' Avoid underflow when numbers are small.
+#' @param lx 1st argument on log-scale
+#' @param ly 2nd argument on log-scale
+#' @seealso http://stackoverflow.com/questions/5802592/dealing-with-very-small-numbers-in-r
+logxpy <- function(lx,ly) max(lx,ly) + log1p(exp(-abs(lx-ly)))

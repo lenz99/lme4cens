@@ -206,13 +206,13 @@ The coefficients currently do not coincide with the results of our `BFGS`-fit!!
 
 We look into the log-likelihood contributions per observations between the two fits when we fit with coefficients 
 as estimated by Nelder-Mead at `lmcens`.
-We need to sort them as appraently the order is different??!!
+
 
 ```{r ex1_compare_logLiks}
 llContribs <- attr(fm.aff$logLik.contribs, "loglik.contribs")
 llContribs.censreg <- update(fm.aff.censreg, start = coef(fm.aff), logLikOnly = TRUE)
 
-MASS::eqscplot(x = sort(llContribs), y = sort(llContribs.censreg)); abline(0,1, col = "grey", lty = 2)
+MASS::eqscplot(x = llContribs, y = llContribs.censreg); abline(0,1, col = "grey", lty = 2)
 ```
 
 The log-likelihood for the optimal fit from `lmcens` is calculated by `censReg` as `r sum(llContribs.censreg)`.
@@ -233,7 +233,7 @@ We plot the log-likelihood contributions from our fitted `lmcens`-model with sta
 llContribs2 <- attr(fm.aff2$logLik.contribs, "loglik.contribs")
 llContribs2.censreg <- update(fm.aff.censreg, start = coef(fm.aff2), logLikOnly = TRUE)
 
-MASS::eqscplot(x = sort(llContribs2), y = sort(llContribs2.censreg)); abline(0,1, col = "grey", lty = 2)
+MASS::eqscplot(x = llContribs2, y = llContribs2.censreg); abline(0,1, col = "grey", lty = 2)
 ```
 
 
