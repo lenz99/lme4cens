@@ -5,8 +5,10 @@
 
 #' Fit a linear model with censored observations.
 #'
+#' Optimization via [stats::optim()].
 #' Residuals are not implemented, yet. What is it for censored observations?
 #' @seealso [stats::lm]
+#' @param start numeric vector of start parameters. If `NULL` use ordinary linear regression for start values
 #' @param offset offset vector that is subtracted from the time variable (in
 #'   case of interval-censoring both boundaries are adapted)
 #' @return list with regression fit stuff (e.g. coefficients, fitted.values
@@ -43,15 +45,10 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
   yTime2 <- yMat[, "time2"]
   yStat <- yMat[, "status"]
 
-  # apply offset to y-variable
-  if (!is.null(offset)){
-    yTime1 <- yTime1 - offset
-    yTime2 <- yTime2 - offset
-  }
 
-
+  # weights and offset ------
   w <- stats::model.weights(mf)
-  if (! is.null(w) && !is.numeric(w))
+  if (! is.null(w) && ! is.numeric(w))
     stop("'weights' must translate into a numeric vector!")
 
   offset <- as.vector(stats::model.offset(mf))
@@ -60,29 +57,53 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
                   length(offset), NROW(y), domain = NA))
 
 
+
   # model matrix ------
   x <- stats::model.matrix(mt, mf, contrasts)
-
   p <- NCOL(x)
 
-  negLogLikFun <- lmcens.objFun(x, yTime1, yTime2, yStat, w)
+
+  negLogLikFun <- lmcens.objFun(x, yTime1, yTime2, yStat, w, offset)
   negLogLikGradFun <- attr(negLogLikFun, "grad")
 
 
   # start values ----
-  beta_init <- if (is.null(start) || ! length(start) %in% c(p, p+1L)){
-    setNames(c(median(yTime1), rep(0L, p)),
+  start <- if (is.null(start) || ! length(start) %in% c(p, p+1L)){
+
+    # quick en dirty start values:
+    # setNames(c(mean(yTime1), rep(0L, p)),
+    #          c(colnames(x), "lSigma"))
+
+    lmy <- yTime1
+    # interval cens
+    lmy[yStat == 3L] <- (lmy[yStat == 3L] + yTime2[yStat == 3L]) / 2L
+
+    lmy_sd <- max(mad(lmy), sd(lmy), .001)
+
+    # right cens
+    lmy[yStat == 0L] <- lmy[yStat == 0L] + abs(rnorm(n = sum(yStat == 0L), mean = 0L, sd = lmy_sd))
+    # left cens
+    lmy[yStat == 2L] <- lmy[yStat == 2L] - abs(rnorm(n = sum(yStat == 2L), mean = 0L, sd = lmy_sd))
+
+    lmfit <- if (is.null(w))
+      lm.fit(x, lmy, offset = offset, singular.ok = TRUE, method = "qr")
+    else lm.wfit(x, lmy, w, offset = offset, singular.ok = TRUE, method = "qr")
+
+    setNames(c(lmfit[["coefficients"]], log(lmy_sd^2 * (n-1L) / max(1L, n-p))/2L),
              c(colnames(x), "lSigma"))
+
   } else {
     if (length(start) == p) start <- c(start, 0L)
     start
   }
 
 
+  # optimization -----
   # optimize the negative log-likelihood function
-  optimRes <- optim(par = beta_init, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
+  optimRes <- optim(par = start, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
 
 
+  # return value ------
   fit_coef <- optimRes$par
   fit_vals <- x %*% fit_coef[1:p]
   if (!is.null(offset))
@@ -90,8 +111,8 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 
 
 
-  # return value ------
   z <- list(coefficients = fit_coef, logLik=-optimRes$value,
+            start = start,
             logLik.contribs = negLogLikFun(fit_coef),
             # hessian relates to the negative log-likelihood function
             hess=optimRes$hessian,
@@ -119,18 +140,20 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 #' Factory method to create the objective function for linear regression with censored observations.
 #'
 #' It is the negative log-likelihood function. Analytical gradient is provided.
-#' Optimization via [stats::optim()].
 #'
 #' @param x model matrix nxp
 #' @param yTime1 first response time
 #' @param yTime2 second response time
 #' @param yStat status variable in interval style
 #' @param w weights vector
+#' @param offset offset vector, can be `NULL`
 #' @return negative log-likelihood as objective function
 #' @export
-lmcens.objFun <- function(x, yTime1, yTime2, yStat, w){
+lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
 
   n <- length(yTime1)
+  p <- NCOL(x)
+
 
   # weights -----
   weighting <- ! missing(w) && ! is.null(w)
@@ -144,15 +167,19 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w){
   w <- w/sum(w) * n
   stopifnot( length(w) == n )
 
-  p <- NCOL(x)
 
+  # offset ---
+  if (!is.null(offset)){
+    yTime1 <- yTime1 - offset
+    yTime2 <- yTime2 - offset
+  }
 
   #' negative log-likelihood function to minimize.
   #' weights are applied to the log-likelihood contributions.
   #' @return negative log-likelihood for given parameter vector for data sample, with positive likelihood contribution of individual observations as attribute
   negLogLikFun <- function(paramVect){
     stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
-    linPred <- x %*% paramVect[1:p]
+    linPred <- x %*% paramVect[1L:p]
 
     resSD <- exp(paramVect[p+1L])
 

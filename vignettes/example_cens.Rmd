@@ -163,7 +163,9 @@ The results of both model fitting routines do agree.
 
 
 
+
 ### Multiple regression
+
 We use Nelder-Mead optimization by default.
 ```{r affairs_multiple_lmcens}
 fm.aff <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
@@ -173,22 +175,39 @@ summary(fm.aff)
 ```
 
 
-When we use the BFGS-optimization method for the same model:
+Now, we use `BFGS` as optimization method.
 
-```{r affairs_multiple_censReg}
+```{r affairs_multiple_lmcens_bfgs}
 fm.aff.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                       ##start = c(coef(lm(affairs ~ age + yearsmarried + religiousness + occupation + rating, data = Affairs)), 2),
                       method = "BFGS",
                       data = Affairs)
 
 summary(fm.aff.bfgs)
 ```
 
+#### Effect of bad start values
+
+When we use the BFGS-optimization method with rough start values (all zeros) we get no convergence at a good model:
+
+```{r affairs_multiple_lmcens_bfgs_badStart}
+fm.aff.bfgs.badstart <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                      start = rep(0, 7L),
+                      method = "BFGS",
+                      data = Affairs)
+
+summary(fm.aff.bfgs.badstart)
+```
+
 The fit is erroneous!!
-We get very different coefficients, although the log-likelihood is similar.
+We get very different coefficients to the previous fit and the log-likelihood is clearly worse.
+So, good start values do matter for bigger models (with possibly correlated predictors).
+
 
 
 
 #### Multiple Tobit model with `censReg`
+
 We compare our results with the output of `censReg`.
 
 ```{r affairs_multiple_censReg__NelderMead}
@@ -199,7 +218,7 @@ fm.aff.censreg <- censReg(affairs ~ age + yearsmarried + religiousness + occupat
 summary(fm.aff.censreg)
 ```
 
-The coefficients currently do not coincide with the results of our `BFGS`-fit!!
+The coefficients are very close to those of our `BFGS`-fit!!
 
 
 
