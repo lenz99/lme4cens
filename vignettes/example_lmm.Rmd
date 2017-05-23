@@ -31,7 +31,7 @@ DO_REML <- FALSE
 ```
 
 
-We test our linear mixed model R-routines with some small examples.
+We test our linear mixed model R-routines with some small examples and compare the fit with the fit of the official `lme4` implementation.
 We use a subset of the infamous `sleepstudy`-data to fit simple linear mixed models.
 
 

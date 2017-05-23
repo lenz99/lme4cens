@@ -1,0 +1,126 @@
+---
+title: "Linear Mixed Models with Censoring Examples"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Linear Mixed Models with Censoring Examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE, message=FALSE}
+library(dplyr)
+
+devtools::dev_mode(on = TRUE)
+## knitr package options
+knitr::opts_knit$set(verbose = FALSE)
+options(digits = 3L)
+
+library(survival)
+
+library(lme4cens)
+library(microbenchmark)
+
+library(censReg)
+library(crch)
+
+data("Affairs", package = "lme4cens")
+
+VERBOSE <- 0L
+```
+
+
+## Mixed Linear Models with censored observations
+
+We use a censored version of the `sleepstudy`-data, by applying the information in column `event3` for left- and right-censored measurements of reaction time.
+We use fixed boundaries (column `event3`) for left- and right-censoring so that we can compare the results with `censReg`.
+
+```{r ex2_sleepstudy2_lme4cens}
+REACT_L <- 212
+REACT_R <- 350
+
+sleepstudy2 %>% 
+  lFormula(Surv(pmin(pmax(Reaction, REACT_L), REACT_R), time2 = Reaction, event = event3,
+                type = "interval") ~ Days + (1|Subject), data = ., REML=FALSE) -> 
+  lForm
+
+
+
+lForm %>% 
+  append(list(verbose=VERBOSE, quadrature = "stats")) %>%
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  
+  myDevFun_f
+
+# Gauss-Hermite quadrature
+lForm %>% 
+  append(list(verbose=VERBOSE, quadrature = "gh")) %>%
+  do.call(mkLmerCensDevfun_rInt_R, .) ->
+  
+  myDevFun_gh_f
+
+
+## optimize function
+paramS <- c(260, 5, 3, 2)
+
+paramEst <- optim(par = paramS, fn = myDevFun_gh_f)
+paramEst
+```
+
+
+
+### Comparison with `censReg`
+
+We compare it with the results of `censReg` on the same data.
+
+```{r ex2_sleepstudy2_censReg, message = FALSE}
+
+sleepstudy2 %>% 
+  dplyr::mutate_(Reaction = ~ pmin(pmax(Reaction, REACT_L), REACT_R))  %>% 
+  plm::pdata.frame(index = c("Subject", "Days")) ->
+  
+  sleepstudy2.cr
+
+fm.censReg <- censReg::censReg(Reaction ~ as.numeric(Days), left = REACT_L, right = REACT_R,
+                               start = paramS, nGHQ = 8L, data = sleepstudy2.cr)
+
+summary(fm.censReg)
+```
+
+The fitted coefficients are different, in particular the intercept coefficient ${\hat β}_0 =$ `r paramEst$par[1]` (`lme4cens`) vs `r coef(fm.censReg)[1]` (`censReg`). The mean value of the observations per time point are:
+```{r sleepstudy2_desc, echo = FALSE, results='asis'}
+sleepstudy2 %>%
+  dplyr::group_by_(~ Days) %>%
+  dplyr::summarise_(mReaction = ~ mean(Reaction)) %>% 
+  knitr::kable(digits = 0L)
+```
+
+
+
+
+We use our method with start values that are close to the optimal values of the `censReg`-fit:
+```{r ex2_sleepstudy2_lme4censLL}
+optim(par = coef(fm.censReg), fn = myDevFun_gh_f)
+```
+
+The variance components change in comparison to the given initial optimal `censReg` values.
+
+```{r ex2_sleepstudy2_censRegLL, echo = FALSE}
+ll.censReg <- censReg::censReg(Reaction ~ as.numeric(Days), left = REACT_L, right = REACT_R, start = paramEst$par, logLikOnly = TRUE, nGHQ = 8L,
+                               data = sleepstudy2.cr)
+
+nll.lme4cens <- myDevFun_gh_f(param = paramEst$par)
+nll.lme4cens.numIntStats <- myDevFun_f(param = paramEst$par)
+```
+
+Vice versa, we check the log-likelihood at the _optimal fit_ of our own implementation.
+`censReg` calculates the log-likelihood contributions per subject, together with its gradient.
+The log-likelihood contributions are `r paste(round(ll.censReg, 2), collapse = ", ")` which sum to `r sum(ll.censReg)`.
+Our implementation using GH-quadrature at the same start vector gives a log-likelihood of `r -nll.lme4cens` with subject-contributions `r paste(round(log(attr(nll.lme4cens, "lik.contribs")), 2), collapse = ", ")`.
+When using numeric integration from `stats`-package we get :
+`r -nll.lme4cens.numIntStats` with subject-contributions `r paste(round(log(attr(nll.lme4cens.numIntStats, "lik.contribs")), 2), collapse = ", ")`
+
+
+
+
