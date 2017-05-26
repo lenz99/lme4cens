@@ -1,11 +1,11 @@
 Package: lme4cens
 Type: Package
 Title: Linear Mixed Effect Models for Censored Data
-Version: 0.0.3
+Version: 0.0.4
 Author: Matthias Kuhn
 Maintainer: Matthias Kuhn <matthias.kuhn@tu-dresden.de>
 Description: Linear Mixed Effect Models that cope with censored data.
-    It uses the formula interface of lme4. As a response variable you can use Surv-objects.
+    It uses the formula interface of lme4. As a response variable you can use survival's Surv-objects.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

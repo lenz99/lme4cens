@@ -2,13 +2,13 @@
 % Please edit documentation in R/lme_cens.R
 \name{mkLmerCensDevfun_rInt_R}
 \alias{mkLmerCensDevfun_rInt_R}
-\title{Produce objective function closure for simple LMER-models with censored response for minimization.}
+\title{Factory for objective function closure for simple LMER-models with censored response for minimization.}
 \usage{
-mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, start = NULL,
-  verbose = 0, quadrature = c("gh", "stats"), ...)
+mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0,
+  quadrature = c("gh", "stats"), ...)
 }
 \arguments{
-\item{fr}{dataframe with response variable in its first column}
+\item{fr}{model frame with response variable in its first column}
 
 \item{reTrms}{list with random effect terms}
 

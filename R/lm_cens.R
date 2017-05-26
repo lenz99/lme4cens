@@ -20,7 +20,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
   m <- match(x = c("formula", "data", "subset", "weights", "offset"),
              table = names(mf), nomatch = 0L)
 
-  # model.frame -----
+  # model.frame and model.matrix -----
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- quote(stats::model.frame)
@@ -31,6 +31,10 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
   if (is.empty.model(mt)){
     stop("Empty model provided!")
   }
+
+  x <- stats::model.matrix(mt, mf, contrasts)
+  p <- NCOL(x)
+
 
   # response variable ------
   y <- prepSurvResp(stats::model.response(mf, type = "any"))
@@ -58,11 +62,9 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 
 
 
-  # model matrix ------
-  x <- stats::model.matrix(mt, mf, contrasts)
-  p <- NCOL(x)
 
 
+  # objective function -----
   negLogLikFun <- lmcens.objFun(x, yTime1, yTime2, yStat, w, offset)
   negLogLikGradFun <- attr(negLogLikFun, "grad")
 
@@ -74,22 +76,13 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
     # setNames(c(mean(yTime1), rep(0L, p)),
     #          c(colnames(x), "lSigma"))
 
-    lmy <- yTime1
-    # interval cens
-    lmy[yStat == 3L] <- (lmy[yStat == 3L] + yTime2[yStat == 3L]) / 2L
-
-    lmy_sd <- max(mad(lmy), sd(lmy), .001)
-
-    # right cens
-    lmy[yStat == 0L] <- lmy[yStat == 0L] + abs(rnorm(n = sum(yStat == 0L), mean = 0L, sd = lmy_sd))
-    # left cens
-    lmy[yStat == 2L] <- lmy[yStat == 2L] - abs(rnorm(n = sum(yStat == 2L), mean = 0L, sd = lmy_sd))
+    lmy <- flattenResponse(yTime1 = yTime1, yTime2 = yTime2, yStat = yStat)
 
     lmfit <- if (is.null(w))
       lm.fit(x, lmy, offset = offset, singular.ok = TRUE, method = "qr")
     else lm.wfit(x, lmy, w, offset = offset, singular.ok = TRUE, method = "qr")
 
-    setNames(c(lmfit[["coefficients"]], log(lmy_sd^2 * (n-1L) / max(1L, n-p))/2L),
+    setNames(c(lmfit[["coefficients"]], log(lmy_sd)),
              c(colnames(x), "lSigma"))
 
   } else {
@@ -137,9 +130,10 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 }
 
 
-#' Factory method to create the objective function for linear regression with censored observations.
+#' Objective function for linear regression with censored observations
 #'
-#' It is the negative log-likelihood function. Analytical gradient is provided.
+#' Factory method to create the negative log-likelihood function. The
+#' (analytical) gradient is provided for improved performance for optimization.
 #'
 #' @param x model matrix nxp
 #' @param yTime1 first response time
@@ -148,6 +142,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 #' @param w weights vector
 #' @param offset offset vector, can be `NULL`
 #' @return negative log-likelihood as objective function
+#'
 #' @export
 lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
 
@@ -174,9 +169,9 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
     yTime2 <- yTime2 - offset
   }
 
-  #' negative log-likelihood function to minimize.
-  #' weights are applied to the log-likelihood contributions.
-  #' @return negative log-likelihood for given parameter vector for data sample, with positive likelihood contribution of individual observations as attribute
+  # negative log-likelihood function to minimize.
+  # weights are applied to the log-likelihood contributions.
+  # returns negative log-likelihood for given parameter vector for data sample, with positive likelihood contribution of individual observations as attribute
   negLogLikFun <- function(paramVect){
     stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
     linPred <- x %*% paramVect[1L:p]
@@ -204,9 +199,9 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
     retVal
   }
 
-  #' gradient of negative log-likelihood function
-  #' weights are on the log-likelihood scale
-  #' @return gradient numeric vector of length equal to number of parameters
+  # gradient of negative log-likelihood function
+  # weights are on the log-likelihood scale
+  # returns gradient numeric vector of length equal to number of parameters
   negLogLikGradFun <- function(paramVect){
     stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
     linPred <- x %*% paramVect[1:p] # nx1 vector

@@ -1,13 +1,14 @@
 ---
 title: "Linear Mixed Models with Censoring Examples"
-author: "Vignette Author"
-date: "`r Sys.Date()`"
+author: "MK"
+date: "2017-02-27, `r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Linear Mixed Models with Censoring Examples}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
 
 ```{r setup, include=FALSE, message=FALSE}
 library(dplyr)
@@ -25,7 +26,7 @@ library(microbenchmark)
 library(censReg)
 library(crch)
 
-data("Affairs", package = "lme4cens")
+data("sleepstudy2", package = "lme4cens")
 
 VERBOSE <- 0L
 ```
@@ -34,15 +35,18 @@ VERBOSE <- 0L
 ## Mixed Linear Models with censored observations
 
 We use a censored version of the `sleepstudy`-data, by applying the information in column `event3` for left- and right-censored measurements of reaction time.
+The response with these boundaries is stored in column `Reaction3`.
 We use fixed boundaries (column `event3`) for left- and right-censoring so that we can compare the results with `censReg`.
 
-```{r ex2_sleepstudy2_lme4cens}
-REACT_L <- 212
-REACT_R <- 350
+
+Manual steps go like this:
+
+```{r ex2_sleepstudy2_lme4cens_manual}
 
 sleepstudy2 %>% 
-  lFormula(Surv(pmin(pmax(Reaction, REACT_L), REACT_R), time2 = Reaction, event = event3,
-                type = "interval") ~ Days + (1|Subject), data = ., REML=FALSE) -> 
+  lFormula(Surv(Reaction3, time2 = Reaction3,
+                event = event3, type = "interval") ~ Days + (1|Subject),
+           data = ., REML=FALSE) -> 
   lForm
 
 
@@ -63,9 +67,23 @@ lForm %>%
 
 ## optimize function
 paramS <- c(260, 5, 3, 2)
+##paramS <- c(233.53, 11.22, 4.24, 3.60 )
 
 paramEst <- optim(par = paramS, fn = myDevFun_gh_f)
 paramEst
+```
+
+We use the wrapper function from `lme4cens` with same fixed start values:
+```{r ex2_sleepstudy2_lme4cens1}
+lmercens_rInt(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
+              start = c(260, 5, 3, 2), REML = FALSE)
+```
+
+
+Wrapper function with automatic start values estimated from data:
+```{r ex2_sleepstudy2_lme4cens2}
+lmercens_rInt(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
+              REML = FALSE)
 ```
 
 
@@ -76,13 +94,15 @@ We compare it with the results of `censReg` on the same data.
 
 ```{r ex2_sleepstudy2_censReg, message = FALSE}
 
+REACT_L3 <- attr(sleepstudy2, "left3")
+REACT_R3 <- attr(sleepstudy2, "right3")
+
 sleepstudy2 %>% 
-  dplyr::mutate_(Reaction = ~ pmin(pmax(Reaction, REACT_L), REACT_R))  %>% 
   plm::pdata.frame(index = c("Subject", "Days")) ->
   
   sleepstudy2.cr
 
-fm.censReg <- censReg::censReg(Reaction ~ as.numeric(Days), left = REACT_L, right = REACT_R,
+fm.censReg <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3,
                                start = paramS, nGHQ = 8L, data = sleepstudy2.cr)
 
 summary(fm.censReg)
@@ -92,7 +112,7 @@ The fitted coefficients are different, in particular the intercept coefficient $
 ```{r sleepstudy2_desc, echo = FALSE, results='asis'}
 sleepstudy2 %>%
   dplyr::group_by_(~ Days) %>%
-  dplyr::summarise_(mReaction = ~ mean(Reaction)) %>% 
+  dplyr::summarise_(mReaction = ~ mean(Reaction3)) %>% 
   knitr::kable(digits = 0L)
 ```
 
@@ -107,7 +127,7 @@ optim(par = coef(fm.censReg), fn = myDevFun_gh_f)
 The variance components change in comparison to the given initial optimal `censReg` values.
 
 ```{r ex2_sleepstudy2_censRegLL, echo = FALSE}
-ll.censReg <- censReg::censReg(Reaction ~ as.numeric(Days), left = REACT_L, right = REACT_R, start = paramEst$par, logLikOnly = TRUE, nGHQ = 8L,
+ll.censReg <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3, start = paramEst$par, logLikOnly = TRUE, nGHQ = 8L,
                                data = sleepstudy2.cr)
 
 nll.lme4cens <- myDevFun_gh_f(param = paramEst$par)

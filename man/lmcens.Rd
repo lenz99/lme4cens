@@ -10,12 +10,15 @@ lmcens(formula, data, subset, weights, contrasts = NULL, offset = NULL,
 \arguments{
 \item{offset}{offset vector that is subtracted from the time variable (in
 case of interval-censoring both boundaries are adapted)}
+
+\item{start}{numeric vector of start parameters. If \code{NULL} use ordinary linear regression for start values}
 }
 \value{
 list with regression fit stuff (e.g. coefficients, fitted.values
 effects, rank, ..)
 }
 \description{
+Optimization via \code{\link[stats:optim]{stats::optim()}}.
 Residuals are not implemented, yet. What is it for censored observations?
 }
 \seealso{

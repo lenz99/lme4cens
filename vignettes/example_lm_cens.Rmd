@@ -36,36 +36,6 @@ VERBOSE <- 0L
 We demonstrate examples for regression analysis for censored observations.
 
 
-## Censored observations in the `survival`-package
-`Surv`-objects are used to hold a response value and its status information.
-You provide a `time` and an `event` column. If `event` is missing (and it is *not* type `interval2`) `Surv` assumes that all subjects have an event.
-It is safest to use logical coding for the `event`-column as the software does not have to guess if 0/1 or 1/2 was used.
-
-A `type`-parameter lets you specify which type of censoring is used. It hence guides the meaning of the censoring:
-
-* `right` censoring means right-censoring (e.g. the unobserved value is greater (right) than `time`. It is default type when there is no `time2` and `event` is _not_ a factor. `event` information is used to know which times are real observations, and which are right-censoring times.
-* `left` censoring means left-censoring (e.g. the unobserved value is smaller (left) than `time`).
-* `interval` to encode for potentially different kind of censorings in one dataset.
-    * `event=0` indicates right-censoring,
-    * `event=1` indicates observed event,
-    * `event=2` indicates left-censoring.
-    * `event=3` for interval-censoring. Only then it uses the `time2` information.
-* `interval2` for interval censorings. All observations are considered as interval-censored observations and `event`-column is not used but instead, `time2` is always used. To mark infinity, you can use `Inf` or `NA`. `type='interval2'` is easier to code for, internally the stored type of `interval2` is still `interval`.
-    * (-Inf, t) for left-censored
-    * (t,t) for exact observations
-    * (t, Inf) for right-censored
-    * (t~1~, t~2~) for interval-censored
-
-`Surv`-objects are implemented as a matrix.
-For instance, four observations with no censoring, left-, right- and interval censoring as represented as a matrix.
-```{r Surv_obj_mat, echo = FALSE}
-survObj <- Surv(time = c(3, -Inf, 3, 3), time2 = c(3, 3, Inf, 5), type = "interval2")
-survObj
-as.matrix(survObj)
-```
-
-
-
 
 ## Exponential distribution
 We generate random data (both, event and censoring independent of each other) from a Weibull distribution.

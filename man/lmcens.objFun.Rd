@@ -2,9 +2,9 @@
 % Please edit documentation in R/lm_cens.R
 \name{lmcens.objFun}
 \alias{lmcens.objFun}
-\title{Factory method to create the objective function for linear regression with censored observations.}
+\title{Objective function for linear regression with censored observations}
 \usage{
-lmcens.objFun(x, yTime1, yTime2, yStat, w)
+lmcens.objFun(x, yTime1, yTime2, yStat, w, offset)
 }
 \arguments{
 \item{x}{model matrix nxp}
@@ -16,17 +16,13 @@ lmcens.objFun(x, yTime1, yTime2, yStat, w)
 \item{yStat}{status variable in interval style}
 
 \item{w}{weights vector}
+
+\item{offset}{offset vector, can be \code{NULL}}
 }
 \value{
 negative log-likelihood as objective function
-
-negative log-likelihood for given parameter vector for data sample, with positive likelihood contribution of individual observations as attribute
-gradient of negative log-likelihood function
-weights are on the log-likelihood scale
-
-gradient numeric vector of length equal to number of parameters
 }
 \description{
-It is the negative log-likelihood function. Analytical gradient is provided.
-Optimization via \code{\link[stats:optim]{stats::optim()}}.
+Factory method to create the negative log-likelihood function. The
+(analytical) gradient is provided for improved performance for optimization.
 }

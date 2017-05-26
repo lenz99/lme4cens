@@ -28,3 +28,24 @@ prepSurvResp <- function(y0) {
     )
   }
 }
+
+
+
+#' Get an quick approximation for a flat response vector from the Surv-response.
+#' It is useful to get sensible start-values using ordinary regression.
+flattenResponse <- function(yTime1, yTime2, yStat) {
+  flat_y <- yTime1
+  # interval cens: use mid-point
+  flat_y[yStat == 3L] <- (flat_y[yStat == 3L] + yTime2[yStat == 3L]) / 2L
+
+  flat_y_sd <- max(sd(flat_y), mad(flat_y), .001,
+                   na.rm = TRUE)
+
+  # right cens
+  flat_y[yStat == 0L] <- flat_y[yStat == 0L] + abs(rnorm(n = sum(yStat == 0L), mean = 0L, sd = 2*flat_y_sd))
+  # left cens
+  flat_y[yStat == 2L] <- flat_y[yStat == 2L] - abs(rnorm(n = sum(yStat == 2L), mean = 0L, sd = 2*flat_y_sd))
+
+  flat_y
+}
+
