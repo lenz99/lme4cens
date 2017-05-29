@@ -134,11 +134,11 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
 
 
 
-#' Linear mixed models with random intercept and with censored response.
+#' Simple random intercept mixed models with censored response.
 #'
 #' This function is modelled after the official function `lmer`.
 #' @export
-lmercens_rInt <- function (formula, data = NULL, REML = TRUE, control = lmerControl(),
+lmercens <- function (formula, data = NULL, REML = TRUE, control = lmerControl(),
                       start = NULL, verbose = 0L, subset, weights, na.action, offset,
                       contrasts = NULL, devFunOnly = FALSE, quadrature = c("gh", "stats"), ...)   {
 
@@ -170,7 +170,12 @@ lmercens_rInt <- function (formula, data = NULL, REML = TRUE, control = lmerCont
   p <- NCOL(lmod$X)
 
   # objective function ------
-  # ZZZ check which LmerCensDevfun to call!!
+  stopifnot( ! is.null(lmod$reTrms), ! is.null(lmod$reTrms$cnms) )
+
+  if (length(lmod$reTrms$cnms) > 1L || lmod$reTrms$cnms[[1L]] != "(Intercept)" ){
+    stop("Only simple random intercept models are supported!")
+  }
+
   devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(quadrature = quadrature,
                                                           verbose = verbose, control = control)))
   if (devFunOnly)

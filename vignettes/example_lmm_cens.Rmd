@@ -39,50 +39,27 @@ The response with these boundaries is stored in column `Reaction3`.
 We use fixed boundaries (column `event3`) for left- and right-censoring so that we can compare the results with `censReg`.
 
 
-Manual steps go like this:
 
-```{r ex2_sleepstudy2_lme4cens_manual}
-
-sleepstudy2 %>% 
-  lFormula(Surv(Reaction3, time2 = Reaction3,
-                event = event3, type = "interval") ~ Days + (1|Subject),
-           data = ., REML=FALSE) -> 
-  lForm
+The function `lmercens` is modelled after `lme4`'s `lmer` function.
+One can specify directly own start values. Otherwise, `lmercens` chooses start values based on a `lmer` fit where censored data has been imputed.
 
 
+### Own start values
+We start with given start values for the parameters that stem from a ordinary `lmer`-fit on the underlying non-censored data.
 
-lForm %>% 
-  append(list(verbose=VERBOSE, quadrature = "stats")) %>%
-  do.call(mkLmerCensDevfun_rInt_R, .) ->
-  
-  myDevFun_f
-
-# Gauss-Hermite quadrature
-lForm %>% 
-  append(list(verbose=VERBOSE, quadrature = "gh")) %>%
-  do.call(mkLmerCensDevfun_rInt_R, .) ->
-  
-  myDevFun_gh_f
-
-
-## optimize function
-paramS <- c(260, 5, 3, 2)
-##paramS <- c(233.53, 11.22, 4.24, 3.60 )
-
-paramEst <- optim(par = paramS, fn = myDevFun_gh_f)
-paramEst
-```
-
-We use the wrapper function from `lme4cens` with same fixed start values:
 ```{r ex2_sleepstudy2_lme4cens1}
-lmercens_rInt(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
-              start = c(260, 5, 3, 2), REML = FALSE)
+paramS <- c(260, 5, 3, 2)
+
+fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
+              start = paramS, REML = FALSE)
+
+fm.lmercens
 ```
 
 
-Wrapper function with automatic start values estimated from data:
+### Automatic start values
 ```{r ex2_sleepstudy2_lme4cens2}
-lmercens_rInt(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
+lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
               REML = FALSE)
 ```
 
@@ -108,7 +85,9 @@ fm.censReg <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, ri
 summary(fm.censReg)
 ```
 
-The fitted coefficients are different, in particular the intercept coefficient ${\hat β}_0 =$ `r paramEst$par[1]` (`lme4cens`) vs `r coef(fm.censReg)[1]` (`censReg`). The mean value of the observations per time point are:
+The fitted coefficients are different, in particular the intercept coefficient ${\hat β}_0 =$ `r fm.lmercens$par[1]` (`lme4cens`) vs `r coef(fm.censReg)[1]` (`censReg`).
+The mean value of the observations per time point are:
+
 ```{r sleepstudy2_desc, echo = FALSE, results='asis'}
 sleepstudy2 %>%
   dplyr::group_by_(~ Days) %>%
@@ -120,26 +99,29 @@ sleepstudy2 %>%
 
 
 We use our method with start values that are close to the optimal values of the `censReg`-fit:
-```{r ex2_sleepstudy2_lme4censLL}
-optim(par = coef(fm.censReg), fn = myDevFun_gh_f)
+```{r ex2_sleepstudy2_lme4censLL, echo = FALSE}
+lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
+         start = coef(fm.censReg), data = sleepstudy2, 
+         REML = FALSE)
+
+fm.lmercens.devfun <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
+         start = coef(fm.censReg), data = sleepstudy2, 
+         REML = FALSE, devFunOnly = TRUE)
 ```
 
 The variance components change in comparison to the given initial optimal `censReg` values.
 
 ```{r ex2_sleepstudy2_censRegLL, echo = FALSE}
-ll.censReg <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3, start = paramEst$par, logLikOnly = TRUE, nGHQ = 8L,
+ll.censReg <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3, start = fm.lmercens$par, logLikOnly = TRUE, nGHQ = 8L,
                                data = sleepstudy2.cr)
 
-nll.lme4cens <- myDevFun_gh_f(param = paramEst$par)
-nll.lme4cens.numIntStats <- myDevFun_f(param = paramEst$par)
+nll.lme4cens <- fm.lmercens.devfun(param = fm.lmercens$par)
 ```
 
 Vice versa, we check the log-likelihood at the _optimal fit_ of our own implementation.
 `censReg` calculates the log-likelihood contributions per subject, together with its gradient.
 The log-likelihood contributions are `r paste(round(ll.censReg, 2), collapse = ", ")` which sum to `r sum(ll.censReg)`.
 Our implementation using GH-quadrature at the same start vector gives a log-likelihood of `r -nll.lme4cens` with subject-contributions `r paste(round(log(attr(nll.lme4cens, "lik.contribs")), 2), collapse = ", ")`.
-When using numeric integration from `stats`-package we get :
-`r -nll.lme4cens.numIntStats` with subject-contributions `r paste(round(log(attr(nll.lme4cens.numIntStats, "lik.contribs")), 2), collapse = ", ")`
 
 
 
