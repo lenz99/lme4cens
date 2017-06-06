@@ -119,14 +119,25 @@ fm.aff.simple.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried,
 summary(fm.aff.simple.bfgs)
 ```
 
+#### censReg
 We compare the output with the fit from `censReg`.
 ```{r affairs_simple_censReg, echo = FALSE}
-fm.simple.aff.censreg <- censReg(affairs ~ yearsmarried, left = 0L, data = Affairs)
+fm.aff.simple.censreg <- censReg(affairs ~ yearsmarried, left = 0L, data = Affairs)
 
-summary(fm.simple.aff.censreg)
+summary(fm.aff.simple.censreg)
 ```
 
 The results of both model fitting routines do agree.
+
+
+#### `survreg`
+Parametric regression is supported in `survival::survreg` function, also known as accelerated failure time (AFT) models.
+It allows for different error distributions. We choose `'gaussian'` to specify the same model:
+
+```{r affairs_simple_survreg, echo = FALSE}
+fm.aff.simple.censreg <- survreg(Surv(affairs, event, type = "left") ~ yearsmarried, dist = "gaussian", data = Affairs)
+summary(fm.aff.simple.censreg)
+```
 
 
 
@@ -134,7 +145,8 @@ The results of both model fitting routines do agree.
 
 ### Multiple regression
 
-We use Nelder-Mead optimization by default.
+
+We use Nelder-Mead (NM) optimization by default.  
 ```{r affairs_multiple_lmcens}
 fm.aff <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
                  data = Affairs)
@@ -142,6 +154,7 @@ fm.aff <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + reli
 summary(fm.aff)
 ```
 
+NM does not use the gradient information and therefore easily gets stuck in a local maximum of the log-likelihood funciton.
 
 Now, we use `BFGS` as optimization method.
 
@@ -153,6 +166,7 @@ fm.aff.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried +
 
 summary(fm.aff.bfgs)
 ```
+
 
 #### Effect of bad start values
 
@@ -189,11 +203,11 @@ summary(fm.aff.censreg)
 The coefficients are very close to those of our `BFGS`-fit!!
 
 
+#### Double checks
 
-
-We look into the log-likelihood contributions per observations between the two fits when we fit with coefficients 
-as estimated by Nelder-Mead at `lmcens`.
-
+##### Likelihood contributions
+We look into the log-likelihood contributions per observations of the NM-fit, once in our implementation and the `censReg` implementation.
+The contriubtions really coincide.
 
 ```{r ex1_compare_logLiks}
 llContribs <- attr(fm.aff$logLik.contribs, "loglik.contribs")
@@ -205,6 +219,7 @@ MASS::eqscplot(x = llContribs, y = llContribs.censreg); abline(0,1, col = "grey"
 The log-likelihood for the optimal fit from `lmcens` is calculated by `censReg` as `r sum(llContribs.censreg)`.
 
 
+##### NM with good start values
 When we start our `lmcens` with the parameter estimates of `censReg` (rounded on 1 digit) using Nelder-Mead we stay in that optimum region and get very similar results:
 ```{r ex1_lmcens_affairs_censRegStart}
 fm.aff2 <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
@@ -214,6 +229,7 @@ fm.aff2 <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + rel
 summary(fm.aff2)
 ```
 
+##### Likelihood contributions at `censReg`-start values
 We plot the log-likelihood contributions from our fitted `lmcens`-model with start parameters coming from `censReg`-fit and also calculate these contributions via the `censReg`-package.
 
 ```{r ex1_compare_logLiks2}
@@ -225,25 +241,38 @@ MASS::eqscplot(x = llContribs2, y = llContribs2.censreg); abline(0,1, col = "gre
 
 
 
-### Tobit Model with `crch`
+#### Tobit Model with `crch`
 
 ```{r ex1_crch_affairs}
 
-fm.crch.aff <- crch(affairs ~ age + yearsmarried + religiousness + occupation + rating,
+fm.aff.crch <- crch(affairs ~ age + yearsmarried + religiousness + occupation + rating,
                     data = Affairs, left = 0, dist = "gaussian")
-summary(fm.crch.aff)
+summary(fm.aff.crch)
 ```
 
 The package `crch` also coincides with the default fit from `censReg`.
 
 
 
-### With weights
+#### `survreg`
+We use parametric AFT-models from `survival`-package. Specifying a Gaussian error distribution within `survreg` should yield the same model.
 
-We explicitly give higher weight to cases with positive religiousness and positive number of affairs.
-The resulting coefficient for `religiousness` changes accordingly.
+```{r affairs_survreg, echo = FALSE}
+fm.aff.censreg <- survreg(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating, dist = "gaussian", data = Affairs)
+summary(fm.aff.censreg)
+```
 
 
+
+
+
+### Multiple regression with weights
+
+We explicitly give higher weight to cases with positive religiousness _and_ positive number of affairs.
+The resulting coefficient for `religiousness` changes from significantly negative towards 0 accordingly.
+
+
+#### lmcens with NM
 ```{r affairs_lmcens_w}
 wPos <- with(Affairs, which(affairs > 1 & religiousness > 2))
 w <- rep(1L, NROW(Affairs))
@@ -256,9 +285,9 @@ summary(fm.aff.w.nm)
 ```
 
 
+#### lmcens with BFGS
 We check the results from `BFGS`-fitting:
 ```{r affairs_lmcens_w_bfgs}
-
 
 fm.aff.w.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
                         method = "BFGS",
@@ -268,5 +297,14 @@ summary(fm.aff.w.bfgs)
 
 
 
+#### survreg
+```{r affairs_survreg_w, echo = FALSE}
+fm.aff.w.survreg <- survreg(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
+                        dist = "gaussian",
+                        weights = w, data = Affairs)
+summary(fm.aff.w.survreg)
+```
 
+The estimates for coefficients are virtually the same with our `BFGS`-fit.
+But standard errors and log-likelihood value differ between the two implementations.
 

@@ -38,7 +38,7 @@ flattenResponse <- function(yTime1, yTime2, yStat) {
   # interval cens: use mid-point
   flat_y[yStat == 3L] <- (flat_y[yStat == 3L] + yTime2[yStat == 3L]) / 2L
 
-  flat_y_sd <- max(sd(flat_y), mad(flat_y), .001,
+  flat_y_sd <- max(1.05 * sd(flat_y), 1.05 * mad(flat_y), .001,
                    na.rm = TRUE)
 
   # right cens

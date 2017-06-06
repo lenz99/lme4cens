@@ -82,7 +82,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
       lm.fit(x, lmy, offset = offset, singular.ok = TRUE, method = "qr")
     else lm.wfit(x, lmy, w, offset = offset, singular.ok = TRUE, method = "qr")
 
-    setNames(c(lmfit[["coefficients"]], log(lmy_sd)),
+    setNames(c(lmfit[["coefficients"]], log(sd(lmy))),
              c(colnames(x), "lSigma"))
 
   } else {

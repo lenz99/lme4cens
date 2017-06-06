@@ -1,7 +1,7 @@
 ---
-title: "Censored observations in mixed-model regression"
+title: "Censored observations in regression"
 author: "MK"
-date: "28 March 2017"
+date: "28 March 2017, `r Sys.Date()`"
 output:
   ioslides_presentation:
     incremental: false
@@ -92,21 +92,25 @@ detach("package:leukemiAnalysis")
 
 ## Random left censoring
 <div class="columns-2">
-- $X$ true response variable
-- $C_l$ censoring variable
+- Two random variables
+    - $X$ true response variable
+    - $C_l$ censoring variable
 <!-- - censoring: $X < C_l$ else $X ≥ C_l$ -->
-- observe __(T, δ)__ with
-    - $T=\max(X, C_l);\,$ δ ∈ {0,1} status
-    - δ=0 censoring: $$T = C_l \text{ and } X < C_l$$
+- observe __(t, δ)__ of random vector (T, Δ)
+    - $T=\max(X, C_l);\,$ Δ ∈ {0,1} status
     - δ=1 event: $$T = X \text{ and } X ≥ C_l$$
+    - δ=0 censoring: $$T = C_l \text{ and } X < C_l$$
+-
 
 
 Function      |  Event X  | Censoring C~l~ |
----------     | --------- | ----------- |
+------------  | --------- | ----------- |
 Density       | f         |      g      |
 Cum Distrib   | F         |      G      |
 Survival      | S = 1-F   |     H = 1-G |
 <!-- Hazard        | λ         |        μ    | -->
+
+Table: Names for functions
 
 </div>
 
@@ -118,18 +122,18 @@ Survival      | S = 1-F   |     H = 1-G |
 > - Generally: $$L(θ\,|\, x) \propto \prod_{i=1}^n f_θ(x_i)$$
 
 
-## Density for (T, δ)
+## Density for (T, Δ)
 > - Assume independence of X and C
 \[
 \begin{aligned}
-f(t, δ = 1) &= f(t) \cdot (1-H(t))\\[1.5ex]
-f(t, δ = 0) &= g(t) \cdot (1-S(t))\\
+f_{(T, Δ)}(t, Δ = 1) &= f(t) \cdot (1-H(t))\\[1.5ex]
+f_{(T, Δ)}(t, Δ = 0) &= g(t) \cdot (1-S(t))\\
 \end{aligned}
 \]
 > - Together
 \[
 \begin{aligned}
-f(t, δ) &= (g(t) \cdot (1-S(t)))^{1-δ} \cdot ( f(t) \cdot (1-H(t)) )^δ\\
+f_{(T, Δ)}(t, δ) &= (g(t) \cdot (1-S(t)))^{1-δ} \cdot ( f(t) \cdot (1-H(t)) )^δ\\
     &= \underbrace{f(t)^δ (1-S(t))^{1-δ}}_{\text{response}} \cdot \underbrace{g(t)^{1-δ} (1-H(t))^δ}_{\text{censoring}}
 \end{aligned}
 \]
@@ -146,7 +150,7 @@ L &= \prod_{i=1}^n f(t_i, δ_i)\\
 > - If censoring independent of the response event:
 \[
 L \propto \prod_{i=1}^n f(t_i)^{δ_i} (1-S(t_i))^{1-δ_i} = \prod_{i∈D} f(x_i) \cdot \prod_{i∈L} [1-S(x_i)]
-\]
+\]`
 
 
 ## Likelihood contributions
@@ -169,18 +173,18 @@ $$
 - Exponentially distributed response
 - Random right censoring, independent of the response
 - Sample {(t~1~, δ~1~), ..., (t~n~, δ~n~)} with $r$ observed events (|D|=r)
-- Density $f(x) = λ \exp(-λ x)$ and survival $S(x) = \exp(-λ x)$ with λ > 0
+- Density $f(x) = λ \cdot \exp(-λ x)$ and survival $S(x) = \exp(-λ x)$ with λ > 0
 
-> - Likelihood: $L \propto \prod_{i∈D} f(x_i) \cdot \prod_{i∈R} S(x_i)$
-> - $L(λ) = λ^r \cdot \exp(-λ \sum_i t_i)$ 
-> - $\hat λ = \frac{r}{\sum_i t_i}$
+> - Likelihood: $$L \propto \prod_{i∈D} f(x_i) \cdot \prod_{i∈R} S(x_i)$$
+> - As function of parameter λ:  $\; L(λ) = λ^r \cdot \exp(-λ \sum_i t_i)$
+> - Solution $\; \hat λ = \frac{r}{\sum_i t_i}$
 
 
 
 
 ## Example {.example}
 - Exponential distribution with parameter λ > 0
-- Random left censoring
+- Random left censoring, independent of the response
 $$
 \begin{aligned}
 L(λ) &= \prod_{i∈D} f(x_i) \cdot \prod_{k∈L} [1-S(x_k)] \\
@@ -257,13 +261,28 @@ lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + occupation + r
 ## Example: `sleepstudy`
 
 - Reaction time after continued sleep deprivation
-- Subset of four subjects
+- Repeated measurements per subject (subset of four subjects)
 
 ```{r sleepstudy2_plot1}
 sleepstudy2 %>% 
   ggplot(data = ., mapping = aes(x = Days, y = Reaction)) +
   geom_point() + 
   facet_wrap(~Subject)
+```
+
+
+## Example: `sleepstudy` + fit (random intercept)
+
+```{r sleepstudy2_plot2}
+fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2)
+sleepstudy2$pred <- predict(fm)
+
+sleepstudy2 %>% 
+  ggplot(data = ., mapping = aes(x = Days, y = Reaction)) +
+  geom_point() + 
+  geom_line(mapping = aes(x = Days, y = pred), colour = "orange", linetype = "dashed") + 
+  facet_wrap(~Subject)
+
 ```
 
 
@@ -293,52 +312,59 @@ $$
 
 
 
-## Example: Random intercept model
+## Random intercept model: matrices
+
+* Simple scalar random effect model
 
 <div class="columns-2">
 
+* Random effects design matrix
+
 $$
-\begin{aligned}
-Z & =\Bigl[ \begin{smallmatrix} 1 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0\\ 1 & 0 & 0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\
+Z =\Bigl[ \begin{smallmatrix} 1 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0\\ 1 & 0 & 0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\
 0 & 1 &  0 & 0 \\ 0 & 1 &  0 & 0 \\ \vdots & \vdots & \vdots & \vdots \end{smallmatrix}\Bigl]
-∈ ℝ^{n𐄂q}\\
-B & = \Bigl[ \begin{smallmatrix} b_1 \\ b_2 \\ b_3 \\ b_4 \end{smallmatrix} \Bigl] \sim \N{0, σ_b^2 I_q} \\
-  & \; \text{ with between-subject variance } σ_b^2 \\
-  & \;
-\end{aligned}
+∈ ℝ^{n𐄂q}
 $$
 
-* Simple scalar random effect
+* Vector of random effects
+
+$$
+B = \Bigl[ \begin{smallmatrix} b_1 \\ b_2 \\ b_3 \\ b_4 \end{smallmatrix} \Bigl] \sim \N{0, σ_b^2 I_q} \\
+   \; \text{ with between-subject variance } σ_b^2 \\
+   \;
+$$
+</div>
+
+
+<!-- $$ -->
+<!-- \begin{aligned} -->
+<!-- Z & =\Bigl[ \begin{smallmatrix} 1 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0\\ 1 & 0 & 0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ 1 & 0 &  0 & 0\\ -->
+<!-- 0 & 1 &  0 & 0 \\ 0 & 1 &  0 & 0 \\ \vdots & \vdots & \vdots & \vdots \end{smallmatrix}\Bigl] -->
+<!-- ∈ ℝ^{n𐄂q}\\ -->
+<!-- B & = \Bigl[ \begin{smallmatrix} b_1 \\ b_2 \\ b_3 \\ b_4 \end{smallmatrix} \Bigl] \sim \N{0, σ_b^2 I_q} \\ -->
+<!--   & \; \text{ with between-subject variance } σ_b^2 \\ -->
+<!--   & \; -->
+<!-- \end{aligned} -->
+<!-- $$ -->
+
+
+## Random intercept model: formulae
 
 > * $Σ_θ = σ_b^2 I_q = σ^2 Λ_θ Λ_θ^T$
 > * $Λ_θ = \frac{σ_b}{σ} I_q$ 
 > * $U = \frac{σ}{σ_b} \cdot B$
 > * $Y|_{U = u} \sim \N{Xβ + Z \frac{σ_b}{σ} u, \, \sigma^2 I_n}$
 
-</div>
 
 
 
-
-## Example: Random intercept model fit
-
-```{r sleepstudy2_plot2}
-fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2)
-sleepstudy2$pred <- predict(fm)
-
-sleepstudy2 %>% 
-  ggplot(data = ., mapping = aes(x = Days, y = Reaction)) +
-  geom_point() + 
-  geom_line(mapping = aes(x = Days, y = pred), colour = "orange", linetype = "dashed") + 
-  facet_wrap(~Subject)
-
-```
 
 
 
 ## Densities
 > * Y|U and U are multivariate normal variables
 > * Using sum of squares $\rho^2(\theta, \beta, u) := \big\| y_\text{obs} - \mu_{Y | U=u} \big\|^2$
+
 $$
 \begin{aligned}
 f_{Y|U}(\yobs | u)   &=   \frac{1}{(2\pi \sigma^2)^{n/2}} \cdot \exp \frac{-\rho^2(\theta, \beta, u)}{2\sigma^2}\\
@@ -470,6 +496,7 @@ $$
 
 - Evaluate an improper integral as weighted average of order o
 - Fewer function evaluations than standard numerical integration
+
 $$
 \int_{-\infty}^\infty \exp(-x^2) \;f(x) \, dx \approx \sum_{i=1}^o w_i \cdot f(x_i)
 $$
@@ -488,16 +515,9 @@ readRDS("benchm_ghInt_rInt.rds")
 - Re-use modules from `lme4`
 
 ```{r sleepstudy_lmeCens, echo=TRUE}
-lFormula(Surv(Reaction, time2 = Reaction, event = event2, type = "interval") ~ 
-           Days + (1|Subject), data = sleepstudy2, REML = FALSE) %>% 
-  do.call(mkLmerCensDevfun_rInt_R, .) ->
-  myDevFun
-  
-## optimize deviance function
-paramS <- c(int=260, slope=5, logS_betw=3, logS=2)
-parEstim <- optim(fn = myDevFun, par = paramS)
-
-c(parEstim$par, logLik = -parEstim$value)
+lmercens(Surv(Reaction, time2 = Reaction, event = event2, type = "interval") ~ 
+  Days + (1|Subject), data = sleepstudy2,
+  start = c(int=260, slope=5, logS_betw=3, logS=2), REML = FALSE)
 ```
 
 
