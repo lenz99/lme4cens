@@ -10,41 +10,62 @@ vignette: >
 ---
 
 The package uses numerical integration to calculate the likelihood contribution for patients with repeated measurements with limitation.
+Here, we look at some examples of integration and compare different methods of integration.
 
-Here, we look at some examples of integration.
 
-First, we load the package and we use `microbenchmark` to assess time of different R-expressions.
-
-```{r load, message=FALSE}
+```{r load, message=FALSE, echo=FALSE}
 library(lme4cens)
 library(microbenchmark)
 ```
 
+
 ## Gauss-Hermite Quadrature
 Gaussian quadrature rules are useful to do numerical integration with fewer function evaluations than normal trapezoid rules -- if the integrand function is of appropriate form.
-In Gauss-Hermite quadrature, we expect a weight funciton $\omega = \exp(-x^2)$ and the aim is to approximate the improper integral $\int_{-\infty}^\infty \exp(-x^2) f(x) dx$ as an weighted average (weights $w_i$) of function evaluations at points $x_i$. The number of points is the order of the quadrature rule.
+In Gauss-Hermite quadrature, we expect a weight funciton $\omega = \exp(-x^2)$ and the aim is to approximate the improper integral $\int_{-\infty}^\infty \exp(-x^2) f(x) dx$ as an weighted average of function evaluations at points $x_i$.
+
+The number of points is the __order__ of the quadrature rule. The integration rule of given order specifies
+
+* the points of evaluation $x_i$ _and_ 
+* the corresponding weights $w_i$:
+
 $$
 \int_{-\infty}^\infty \exp(-x^2) \;f(x) \, dx \approx \sum_{i=1}^o w_i \cdot f(x_i)
 $$
 
-The Gauss-Hermite weight function is nearly the standard normal probability density function (PDF).
+The Gauss-Hermite weight function is almost the standard normal probability density function (PDF) $f(x) = \frac{1}{\sqrt{2\pi}} \cdot \exp(-\frac{x^2}{2})$.
 If the weight function is adapted to be the standard normal PDF then the weights will sum to 1 (because a PDF is normalized to 1).
 
 We can extend the quadrature rule to more dimensions by taking a grid of points and use the product of the corresponding 1-dimensional weights.
 __Sparse grid rules__  combine quadrature rules (possibly of different orders) in the different directions (=dimensions) and have fewer points as the full Cartesian product.
 The sum of the order in the different dimensions is called _l_-sum.
 Concretely, a sparse gird rule of order _L_ is constructed by adding all the rules with _l_-sum equal to L and subtracting the rules with the _l_-sum of L-1.
-Sparse grid rules are hence useable also for efficient high-dimensional integration.
+Numeric integration facilitates efficient high-dimensional integration via sparse grid rules.
 
 
 
 ## Density of standard normal distribution
 We check the normalization property of the normal density and  calculate the inproper integral over the density.
-This is a classical example where one can use Gauß-Hermite quadrature. 
-Besides the Gauss-Hermite weight function only a constant function remains.
-Here, we look at the timings of different implementations. There are also tests in place to check for the correct results.
+This is a classical example where one can use Gauß-Hermite quadrature after a change of variable $t \mapsto \sqrt 2 u$.
+
+$$
+\begin{aligned}
+1 &= \frac{1}{\sqrt{2π}} \cdot \int_{-\infty}^\infty \exp(-\frac{t^2}{2}) dt \\
+  &= \frac{1}{\sqrt{2π}} \cdot \int_{-\infty}^\infty \exp(-u^2) \sqrt 2 du \\
+  &= \frac{1}{\sqrt{π}} \cdot \int_{-\infty}^\infty \exp(-u^2)  du \\
+  &\approx \frac{1}{\sqrt{\pi}} \sum_{i=1}^o w_i
+\end{aligned}
+$$
+
+Besides the Gauss-Hermite weight function only a constant function $f\equiv 1$ remains and the sum of the weights equals $\sqrt pi$.
+
+
+#### Timing Benchmark
+Here, we look at the timings of different implementations.
+There are also tests in place to check for the correct results.
 
 ```{r normality_dens_stdNorm}
+stopifnot( all.equal(int_gh(f = 1), sqrt(pi)) )
+
 dnorm2 <- function(x) 1/sqrt(2*pi) * exp(-x^2/2)
 microbenchmark(
   integrate(dnorm, lower = -Inf, upper = Inf),
@@ -57,61 +78,47 @@ microbenchmark(
 ```
 
 
+
+
 ## Expectation of squared normal variable
 The expectation of a squared normal variable is calculated by the integral of $x^2$ with the probability measure, conveyed by the normal density.
-For Gauss-Hermite, the weights basically cover the normal density part, and the square function remains as function.
+
+
+We assume for $X$ a normal distribution with true mean value of `r (MU <- -1.3)` and unit variance `r (SIGMA2 <- 1)`. Then $X^2 \sim \chi_1'^2(λ)$ with non-centrality parameter $λ = μ^2 = `r MU^2`$. The degree of freedom is $k=1$. For non-central distribution the mean is $k + λ$ and we hence have $E[X^2] = 1 + μ^2 =$ `r 1 + MU^2`.
+
+For Gauss-Hermite integration, the weights basically cover the normal density part, and the square $x^2$ remains as function.
+The derivation goes via the change of variable $t \mapsto μ + \sqrt{2σ^2} \cdot u$ and $dt = \sqrt{2σ^2} du$:
+$$
+\begin{aligned}
+E[X^2] &= \frac{1}{\sqrt{2π σ^2}} \cdot \int_{-\infty}^{\infty} t^2 \cdot \exp(-\frac{(t-μ)^2}{2σ^2}) dt \\
+  &= \frac{1}{\sqrt{2π σ^2}} \cdot \int_{-\infty}^{\infty} (μ + \sqrt{2σ^2} \cdot u)^2 \cdot \exp(-u^2) \sqrt{2σ^2} du \\
+  &= \frac{1}{\sqrt{π}} \cdot \int_{-\infty}^{\infty} (μ + \sqrt{2σ^2} \cdot u)^2 \cdot \exp(-u^2) du \\
+  &\approx \frac{1}{\sqrt{π}} \cdot \sum_{i=1}^o w_i \cdot (μ + \sqrt{2σ^2} \cdot x_i)^2
+\end{aligned}
+$$
+
+The numerical result of integration (Gauß-Hermite of order 7) is `r sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7)`.
 
 ```{r exp_squaredNormal}
-MU <- -1.3
-SIGMA2 <- 3.1
-
 microbenchmark(stats::integrate(f = function(x) sqrt(2 * pi*SIGMA2)**-1 * exp(-(x-MU)^2/(2*SIGMA2)) * x^2, lower = -Inf, upper = Inf),
                sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7),
                times = 1000L)
 ```
-The numerical result (GH, order 7) is `r sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7)`.
 
 
 
 
 
 ## Benchmarking linear mixed model with censoring
-We use the sleepstudy data and use our implementation of linear mixed models with left- and right-censoring
+We use the `sleepstudy`-data and use our implementation of linear mixed models with left- and right-censoring
 and compare Gauß-Hermite vs Standard numeric integration.
 
 ```{r benchm, cache=TRUE}
 
-REACT_L <- 212
-REACT_R <- 350
 
-sleepstudy2 %>% 
-  lFormula(Surv(pmin(pmax(Reaction, REACT_L), REACT_R), time2 = Reaction, event = event3,
-                type = "interval") ~ Days + (1|Subject), data = ., REML=FALSE) -> 
-  lForm
-
-
-
-lForm %>% 
-  append(list(verbose=VERBOSE, quadrature = "stats")) %>%
-  do.call(mkLmerCensDevfun_rInt_R, .) ->
-  
-  myDevFun_f
-
-# Gauss-Hermite quadrature
-lForm %>% 
-  append(list(verbose=VERBOSE, quadrature = "gh")) %>%
-  do.call(mkLmerCensDevfun_rInt_R, .) ->
-  
-  myDevFun_gh_f
-
-
-# parameter vector
-paramS <- c(260, 5, 3, 2)
-
-
-mbObj <- microbenchmark(optim(par = paramS, fn = myDevFun_f),
-               optim(par = paramS, fn = myDevFun_gh_f),
-               times = 3L)
+mbObj <- microbenchmark(times = 3L,
+                        lmercens(Surv(Reaction3, time2 = Reaction, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, REML = FALSE),
+                        lmercens(Surv(Reaction3, time2 = Reaction, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, REML = FALSE, quadrature = "stats"))
 ##saveRDS(mbObj, file = "~/benchm_ghInt_rInt.rds")
 mbObj
 ```

@@ -144,7 +144,8 @@ lmercens <- function (formula, data = NULL, REML = TRUE, control = lmerControl()
 
   quadrature <- match.arg(quadrature)
 
-  mc <- mcout <- match.call()
+  mcout <- match.call(expand.dots = TRUE)
+  mc <- match.call(expand.dots = FALSE)
   missCtrl <- missing(control)
   if (!missCtrl && !inherits(control, "lmerControl")) {
     if (!is.list(control))
@@ -161,6 +162,8 @@ lmercens <- function (formula, data = NULL, REML = TRUE, control = lmerControl()
     #   mc$control <- glmerControl()
     # return(eval(mc, parent.frame(1L)))
   }
+  m <- match(c("formula", "data", "subset", "weights", "na.action", "offset", "REML"), names(mc), nomatch = 0L)
+  mc <- mc[c(1L, m)]
   mc$control <- control
   mc[[1]] <- quote(lme4::lFormula)
   lmod <- eval(mc, parent.frame(1L))
@@ -222,11 +225,11 @@ lmercens <- function (formula, data = NULL, REML = TRUE, control = lmerControl()
   opt <- if (length(control$optimizer) == 0L) {
     stop("start values are required if no optimization")
     #s <- getStart(start, environment(devfun)$lower, environment(devfun)$pp)
-    list(par = s, fval = devfun(s), conv = 1000, message = "no optimization")
+    list(par = s, fixef = s[1L:p], fval = devfun(s), conv = 1000, message = "no optimization")
   }
   else {
     res_optim <- optim(par = start, fn = devfun)
-    list(par = res_optim$par, fval = res_optim$value, conv = res_optim$convergence, message = "call to optim", start = start)
+    list(par = res_optim$par, fixef = res_optim$par[1L:p], fval = res_optim$value, conv = res_optim$convergence, message = "call to optim", start = start)
     # optimizeLmer(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,
     #              boundary.tol = control$boundary.tol, control = control$optCtrl,
     #              verbose = verbose, start = start, calc.derivs = control$calc.derivs,
