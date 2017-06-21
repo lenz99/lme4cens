@@ -208,7 +208,7 @@ lmercens <- function (formula, data = NULL, REML = TRUE, control = lmerControl()
 
     # new call to lmer for start values
     lmerStart <- do.call(what = lme4::lmer, args = list(data = data_start, formula = update(formula, y_start ~ .)))
-    c(fixef(lmerStart), log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.001))
+    c(fixef(lmerStart), log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01))
 
   } else {
     if (length(start) == p) start <- c(start, 0, 0)
