@@ -172,7 +172,7 @@ $$
 ## Example {.example}
 - Exponentially distributed response
 - Random right censoring, independent of the response
-- Sample {(t~1~, δ~1~), ..., (t~n~, δ~n~)} with $r$ observed events (|D|=r)
+- Sample {(t~1~, δ~1~), ..., (t~n~, δ~n~)} with $r$ observed events, i.e. |D|=r.
 - Density $f(x) = λ \cdot \exp(-λ x)$ and survival $S(x) = \exp(-λ x)$ with λ > 0
 
 > - Likelihood: $$L \propto \prod_{i∈D} f(x_i) \cdot \prod_{i∈R} S(x_i)$$
@@ -209,7 +209,7 @@ negLogLik_expLCens <- function(data){
 }
 
 ## find MLE
-optimize(negLogLik(data), interval = c(0, 10))
+optimize(negLogLik_expLCens(data), interval = c(0, 10))
 
 ```
 
@@ -271,7 +271,9 @@ sleepstudy2 %>%
 ```
 
 
-## Example: `sleepstudy` + fit (random intercept)
+## Example: `sleepstudy` 
+
+* Fit of random intercept model
 
 ```{r sleepstudy2_plot2}
 fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2)
@@ -302,18 +304,10 @@ $$
 
 
 
-## Random effects
-> - $B \sim \N{0, Σ_θ}$ where $Σ_θ$ is a $q\times q$-covariance matrix.
-> - $Σ_θ = σ^2 Λ_θ Λ_θ^T$ Cholesky-decomposition
->     * variance-component parameter θ _and_
->     * __relative covariance factor__ $Λ_θ ∈ ℝ^{q\times q}$
-> - Use __spherical random-effects__ variable $U \sim \N{0, \sigma^2 I_q}$ with $$B = Λ_θ U$$
-
-
-
 
 ## Random intercept model: matrices
 
+* $B \sim \N{0, Σ_θ}$ where $Σ_θ$ is a $q\times q$-covariance matrix.
 * Simple scalar random effect model
 
 <div class="columns-2">
@@ -348,6 +342,13 @@ $$
 <!-- $$ -->
 
 
+## Random effects
+> - $Σ_θ = σ^2 Λ_θ Λ_θ^T$ Cholesky-decomposition
+>     * variance-component parameter θ _and_
+>     * __relative covariance factor__ $Λ_θ ∈ ℝ^{q\times q}$
+> - Use __spherical random-effects__ variable $U \sim \N{0, \sigma^2 I_q}$ with $$B = Λ_θ U$$
+
+
 ## Random intercept model: formulae
 
 > * $Σ_θ = σ_b^2 I_q = σ^2 Λ_θ Λ_θ^T$
@@ -362,13 +363,14 @@ $$
 
 
 ## Densities
-> * Y|U and U are multivariate normal variables
-> * Using sum of squares $\rho^2(\theta, \beta, u) := \big\| y_\text{obs} - \mu_{Y | U=u} \big\|^2$
+* Y|U and U are multivariate normal variables
+* Residual sum of squares $\rho^2(\theta, \beta, u) := \big\| y_\text{obs} - \mu_{Y | U=u} \big\|^2$
 
 $$
 \begin{aligned}
 f_{Y|U}(\yobs | u)   &=   \frac{1}{(2\pi \sigma^2)^{n/2}} \cdot \exp \frac{-\rho^2(\theta, \beta, u)}{2\sigma^2}\\
-f_U (u)    &= \frac{1}{(2\pi\sigma^2)^{q/2}} \cdot \exp \frac{- \|u\|^2}{2\sigma^2} \\
+f_U (u)    &= \frac{1}{(2\pi\sigma^2)^{q/2}} \cdot \exp \frac{- \|u\|^2}{2\sigma^2} \\[3.25ex]
+f_{Y,U}(\yobs, u)    &=   f_{Y|U}(\yobs | u)  \quad \cdot \quad f_U (u)
 \end{aligned}
 $$
 
@@ -383,7 +385,7 @@ f_{Y,U}(\yobs, u)    &=   f_{Y|U}(\yobs | u)  \qquad \cdot \qquad f_U (u) \\
 \end{aligned}
 $$
 
-> * __penalized sum-of-squares__ $r^2(\theta, \beta, u) := \rho^2(\theta, \beta, u) + \|u\|^2$ 
+* __penalized residual sum-of-squares__ $r^2(\theta, \beta, u) := \rho^2(\theta, \beta, u) + \|u\|^2$ 
 
 
 
@@ -417,13 +419,13 @@ L_i(\theta, \beta, \sigma^2 | y_i) &=  f_Y(y_i) = \int f_{Y,U}(y_i, u_i) \, du_i
 $$
 
 - Together __not__ a product of likelihood contribution of individual observations
-
+- __Penalized least squares (PLS)__  problem
 
 
 # Efficient Estimation of Linear Mixed Models 
 
 ## Pseudo-data approach {.incremental}
-* amend the observed data $y_\text{obs}$ with an "observed" $u_\text{obs}=0$ for the (unobservable) spherical
+* Amend the observed data $y_\text{obs}$ with an "observed" $u_\text{obs}=0$ for the (unobservable) spherical
 random-effects variable $u$
 * PLS-problem becomes a standard least square problem in the amended space
 

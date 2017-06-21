@@ -3,6 +3,8 @@ title: "Numerical Integration"
 author: "MK"
 date: "2017-03-10, `r Sys.Date()`"
 output: rmarkdown::html_vignette
+params:
+  benchmark: false 
 vignette: >
   %\VignetteIndexEntry{Numerical Integration}
   %\VignetteEngine{knitr::rmarkdown}
@@ -14,6 +16,7 @@ Here, we look at some examples of integration and compare different methods of i
 
 
 ```{r load, message=FALSE, echo=FALSE}
+devtools::dev_mode(on = TRUE)
 library(lme4cens)
 library(microbenchmark)
 ```
@@ -21,11 +24,11 @@ library(microbenchmark)
 
 ## Gauss-Hermite Quadrature
 Gaussian quadrature rules are useful to do numerical integration with fewer function evaluations than normal trapezoid rules -- if the integrand function is of appropriate form.
-In Gauss-Hermite quadrature, we expect a weight funciton $\omega = \exp(-x^2)$ and the aim is to approximate the improper integral $\int_{-\infty}^\infty \exp(-x^2) f(x) dx$ as an weighted average of function evaluations at points $x_i$.
+In Gauss-Hermite quadrature, we require a weight funciton $\omega = \exp(-x^2)$ and the aim is to approximate the improper integral $\int_{-\infty}^\infty \exp(-x^2) f(x) dx$ as an weighted average of function evaluations at points $x_i$.
 
 The number of points is the __order__ of the quadrature rule. The integration rule of given order specifies
 
-* the points of evaluation $x_i$ _and_ 
+* the abscissaes $x_i$ of evaluation _and_ 
 * the corresponding weights $w_i$:
 
 $$
@@ -43,27 +46,33 @@ Numeric integration facilitates efficient high-dimensional integration via spars
 
 
 
-## Density of standard normal distribution
-We check the normalization property of the normal density and  calculate the inproper integral over the density.
-This is a classical example where one can use Gauß-Hermite quadrature after a change of variable $t \mapsto \sqrt 2 u$.
+
+
+
+### Density of normal distribution
+For the 1-dimensional normal density with mean μ and variance σ^2^ we apply a change of variable $t \mapsto μ + \sqrt 2 σ \cdot u$ which implies $dt = \sqrt 2 σ du$ 
+in order to recover the Gauß-Hermite form.
+
+With this transformation, we get $u^2 = \frac{1}{2} (\frac{x-μ}{σ})^2$ and
+besides the Gauss-Hermite weight function only a constant function $f\equiv 1$ remains and the sum of the weights equals $\sqrt \pi$.
+
 
 $$
 \begin{aligned}
-1 &= \frac{1}{\sqrt{2π}} \cdot \int_{-\infty}^\infty \exp(-\frac{t^2}{2}) dt \\
-  &= \frac{1}{\sqrt{2π}} \cdot \int_{-\infty}^\infty \exp(-u^2) \sqrt 2 du \\
+1  = P(X ≤ \infty) &= \frac{1}{\sqrt{2π}σ} \cdot \int_{-\infty}^\infty \exp(-\frac{(t-μ)^2}{2σ^2}) dt \\
+  &= \frac{1}{\sqrt{2π}σ} \cdot \int_{-\infty}^\infty \exp(-u^2) \sqrt 2 σ du \\
   &= \frac{1}{\sqrt{π}} \cdot \int_{-\infty}^\infty \exp(-u^2)  du \\
   &\approx \frac{1}{\sqrt{\pi}} \sum_{i=1}^o w_i
 \end{aligned}
 $$
 
-Besides the Gauss-Hermite weight function only a constant function $f\equiv 1$ remains and the sum of the weights equals $\sqrt pi$.
 
 
 #### Timing Benchmark
-Here, we look at the timings of different implementations.
+We look at the timings of different implementations for the integration of the density of standard normal.
 There are also tests in place to check for the correct results.
 
-```{r normality_dens_stdNorm}
+```{r normality_dens_stdNorm, eval=params$benchmark}
 stopifnot( all.equal(int_gh(f = 1), sqrt(pi)) )
 
 dnorm2 <- function(x) 1/sqrt(2*pi) * exp(-x^2/2)
@@ -80,26 +89,27 @@ microbenchmark(
 
 
 
-## Expectation of squared normal variable
+### Expectation of squared normal variable
 The expectation of a squared normal variable is calculated by the integral of $x^2$ with the probability measure, conveyed by the normal density.
 
 
-We assume for $X$ a normal distribution with true mean value of `r (MU <- -1.3)` and unit variance `r (SIGMA2 <- 1)`. Then $X^2 \sim \chi_1'^2(λ)$ with non-centrality parameter $λ = μ^2 = `r MU^2`$. The degree of freedom is $k=1$. For non-central distribution the mean is $k + λ$ and we hence have $E[X^2] = 1 + μ^2 =$ `r 1 + MU^2`.
+We assume for $X$ a normal distribution with true mean value of μ = `r (MU <- -1.3)` and unit variance σ = `r (SIGMA2 <- 1)`. Then $X^2 \sim \chi_1'^2(λ)$ with non-centrality parameter $λ = μ^2 = `r MU^2`$ and degree of freedom $k=1$.
+For non-central distribution the mean is $k + λ$ and we hence have $E[X^2] = 1 + μ^2 =$ `r 1 + MU^2`.
 
-For Gauss-Hermite integration, the weights basically cover the normal density part, and the square $x^2$ remains as function.
-The derivation goes via the change of variable $t \mapsto μ + \sqrt{2σ^2} \cdot u$ and $dt = \sqrt{2σ^2} du$:
+For Gauss-Hermite integration, the weights basically cover the normal density part, and a transformed variant of square function remains as function.
+The derivation goes via the change of variable $t \mapsto μ + \sqrt 2 σ \cdot u$ and $dt = \sqrt2 σ \, du$:
 $$
 \begin{aligned}
-E[X^2] &= \frac{1}{\sqrt{2π σ^2}} \cdot \int_{-\infty}^{\infty} t^2 \cdot \exp(-\frac{(t-μ)^2}{2σ^2}) dt \\
-  &= \frac{1}{\sqrt{2π σ^2}} \cdot \int_{-\infty}^{\infty} (μ + \sqrt{2σ^2} \cdot u)^2 \cdot \exp(-u^2) \sqrt{2σ^2} du \\
-  &= \frac{1}{\sqrt{π}} \cdot \int_{-\infty}^{\infty} (μ + \sqrt{2σ^2} \cdot u)^2 \cdot \exp(-u^2) du \\
-  &\approx \frac{1}{\sqrt{π}} \cdot \sum_{i=1}^o w_i \cdot (μ + \sqrt{2σ^2} \cdot x_i)^2
+E[X^2] &= \frac{1}{\sqrt{2π} σ} \cdot \int_{-\infty}^{\infty} t^2 \cdot \exp(-\frac{(t-μ)^2}{2σ^2}) dt \\
+  &= \frac{1}{\sqrt{2π} σ} \cdot \int_{-\infty}^{\infty} (μ + \sqrt 2 σ \cdot u)^2 \cdot \exp(-u^2) \sqrt 2 σ \,du \\
+  &= \frac{1}{\sqrt{π}} \cdot \int_{-\infty}^{\infty} (μ + \sqrt2 σ \cdot u)^2 \cdot \exp(-u^2) du \\
+  &\approx \frac{1}{\sqrt{π}} \cdot \sum_{i=1}^o w_i \cdot (μ + \sqrt2 σ \cdot x_i)^2
 \end{aligned}
 $$
 
 The numerical result of integration (Gauß-Hermite of order 7) is `r sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7)`.
 
-```{r exp_squaredNormal}
+```{r exp_squaredNormal, eval=params$benchmark}
 microbenchmark(stats::integrate(f = function(x) sqrt(2 * pi*SIGMA2)**-1 * exp(-(x-MU)^2/(2*SIGMA2)) * x^2, lower = -Inf, upper = Inf),
                sqrt(pi)**-1 * int_gh(f = function(x) (sqrt(2 * SIGMA2) * x + MU)^2, o = 7),
                times = 1000L)
@@ -109,11 +119,58 @@ microbenchmark(stats::integrate(f = function(x) sqrt(2 * pi*SIGMA2)**-1 * exp(-(
 
 
 
-## Benchmarking linear mixed model with censoring
+
+## Linear mixed model with censoring
+
+In the mixed model approach we assume a normal distribution for $Y$, -- given the realization of the (unobserved) random effect variable $B$.
+The density of the joint distribution $(Y,B)$ is hence a product of this conditional density $Y|B$ (which is normal) and the normal density of the random effects variable $B$.
+The likelihood of the model is expressed by means of the joint distribution where we integrate out the effect of $B$, i.e. in terms of spherical $U$:
+$$
+L(θ, β, σ^2 | y_\text{obs}) = f_Y(y_\text{obs}) = \int f_{Y,U}(y_\text{obs}, u) du = \int f_{Y|U}(y_\text{obs} | u) \cdot f_U (u) \, du
+$$
+
+### Likelihood contributions for random intercept model
+In the random intercept model the vector of random effects $B$ is multivariate normal with diagonal covariance matrix.
+The variance parameter vector θ consists here only of the parameter $σ_b$.
+
+The likelihood contribution for measurements that belong to subject $i$ with corresponding random variable $b_i \sim N(0, σ_b^2)$ is given by the following integral.
+It involves a $J_i$-dimensional normal density where $J_i$ is the number of observations for subject $i$.
+$X_i ∈ ℝ^{J_i × p}$ is the fixed effect design matrix for subject $i$.
+$X_i β + b_i$  indicates a $J_i$-dimensional (predicted) mean where $b_i$ is recycled to length $J_i$.
+$$
+L_i(σ_b, β, σ^2 | y_{\text{obs}, i}) = \int ϕ^\text{MV}_{X_iβ + b_i, σ^2I_{J_i}}(y_{\text{obs}, i}) \cdot ϕ_{0,  σ_b^2} (b_i) db_i
+$$
+
+According to the model, the $J_i$ measurements that belong to subject $i$ are independent. That's why the multivariate normal density can be written as a product
+where $X^t_{ij}$ is to the row of the design matrix corresponding to $j$-th measurements of subject $i$.
+$$
+\begin{aligned}
+L_i(σ_b, β, σ^2 | y_{\text{obs}, i}) &= \int \Big\{\prod_{j=1}^{J_i} ϕ_{X^t_{ij} β + b_i, σ^2}(y_{\text{obs}, i}) \Big\}\cdot ϕ_{0, σ_b^2} (b_i)  \, db_i \\
+  &= \frac{1}{\sqrt{2π} σ_b} \int  \Big\{ \prod_{j=1}^{J_i} ϕ_{X^t_{ij} β + b_i, σ^2}(y_{\text{obs}, i_j})  \Big\}\cdot \exp(-\frac{b_i^2}{2σ_b^2})  \, db_i \\
+\end{aligned}
+$$
+
+This integral can be efficiently calculated with help of Gauß-Hermite quadrature:
+
+* Transform $b_i \mapsto \sqrt 2 σ_b \cdot t$ so that we replace the exponent of the central normal density: $t^2 = \frac{b_i^2}{2σ_b^2}$
+* Use Gauß-Hermite of order $o$ with weights $w_1, \ldots, w_o$ and abscissae points $ψ_1, \ldots, ψ_o$:
+
+$$
+\begin{aligned}
+L_i(θ, β, σ^2 | y_{\text{obs}, i})  &= \frac{1}{\sqrt{2π} σ_b} \cdot \int  \Big\{ \prod_{j=1}^{J_i} ϕ_{X^t_{ij} β + b_i, σ^2}(y_{\text{obs}, i_j})  \Big\} \cdot  \exp( - \frac{b_i^2}{2 σ_b^2}) db_i\\
+  &= \frac{1}{\sqrt π} \cdot \int  \Big\{ \prod_{j=1}^{J_i} ϕ_{X^t_{ij} β + \sqrt 2 σ_b t, σ^2}(y_{\text{obs}, i_j})  \Big\} \cdot  \exp( - t^2)  \, dt\\
+  &\approx \frac{1}{\sqrt π} \sum_{h = 1}^o w_h \cdot \Big\{  \prod_{j=1}^{J_i} ϕ_{X^t_{ij} β + \sqrt 2 σ_b ψ_h, σ^2}(y_{\text{obs}, i_j})    \Big\} \\
+  &= \frac{1}{\sqrt π} \sum_{h = 1}^o w_h \cdot \Big\{ (2 π σ^2)^{-\frac{J_i}{2}}  \prod_{j=1}^{J_i} \exp( - \frac{(y_{\text{obs}, i_j} - X^t_{ij} β - \sqrt 2 σ_b ψ_h)^2}{2 σ^2})    \Big\}  \\
+  &= \frac{(2 π σ^2)^{-\frac{J_i}{2}}}{\sqrt π} \sum_{h = 1}^o w_h \cdot  \exp\Big( - \sum_{j=1}^{J_i} \frac{(y_{\text{obs}, i_j} - X^t_{ij} β - \sqrt 2 σ_b ψ_h)^2}{2 σ^2}  \Big)  \\
+\end{aligned}
+$$
+
+
+### Timing
 We use the `sleepstudy`-data and use our implementation of linear mixed models with left- and right-censoring
 and compare Gauß-Hermite vs Standard numeric integration.
 
-```{r benchm, cache=TRUE}
+```{r benchm, cache=TRUE, eval=params$benchmark}
 
 
 mbObj <- microbenchmark(times = 3L,
