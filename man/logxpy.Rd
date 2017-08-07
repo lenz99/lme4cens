@@ -2,19 +2,17 @@
 % Please edit documentation in R/zzz.R
 \name{logxpy}
 \alias{logxpy}
-\title{Calculates log(x+y)
-Avoid underflow when numbers are small.}
+\title{Calculates log(x+y) where the (small) arguments are given on log-scale.}
 \usage{
 logxpy(lx, ly)
 }
 \arguments{
-\item{lx}{1st argument on log-scale}
+\item{lx}{1st argument on natural log-scale}
 
-\item{ly}{2nd argument on log-scale}
+\item{ly}{2nd argument on natural log-scale}
 }
 \description{
-Calculates log(x+y)
-Avoid underflow when numbers are small.
+This implementation avoid underflow when numbers are small. The trick is to do the summation on log-space.
 }
 \seealso{
 http://stackoverflow.com/questions/5802592/dealing-with-very-small-numbers-in-r

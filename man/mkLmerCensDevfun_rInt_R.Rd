@@ -5,10 +5,12 @@
 \title{Factory for objective function closure for simple LMER-models with censored response for minimization.}
 \usage{
 mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0,
-  quadrature = c("gh", "stats"), ...)
+  quadrature = c("gh", "stats"), gh_ord = 8L, ...)
 }
 \arguments{
 \item{fr}{model frame with response variable in its first column}
+
+\item{X}{design matrix of fixed effects}
 
 \item{reTrms}{list with random effect terms}
 

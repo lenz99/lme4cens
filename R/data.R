@@ -3,7 +3,7 @@
 #' @source lme4 package
 "sleepstudy"
 
-#' Balanced subset of Sleepstudy with only four patients,
+#' Subset of `sleepstudy` data with only four patients,
 #' including possible censoring information (`event2` and `event3`).
 #'
 #' @details
@@ -13,7 +13,7 @@
 #' * `event3` [numeric] status variable with __deterministic__ clear-cut left- and right-censoring (boundaries are <312 for Left and >350 for Right cens)
 #' * `Reaction3` [numeric] response variable with the clear-cut censoring boundaries (from `event3`) as the response for censored observations
 #'
-#' @source lme4 package
+#' @source `lme4` package
 "sleepstudy2"
 
 #' Fair's Extramartial Affairs Data.

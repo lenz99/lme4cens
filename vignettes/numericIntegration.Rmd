@@ -165,6 +165,20 @@ L_i(θ, β, σ^2 | y_{\text{obs}, i})  &= \frac{1}{\sqrt{2π} σ_b} \cdot \int  
 \end{aligned}
 $$
 
+#### Random intercept model with censored observations
+
+When there are _censored observations_ in the sample the product of normal densities inside {..} will become a product of normal densities and normal cumulative distribution values.
+
+$$
+\begin{aligned}
+L_i(θ, β, σ^2 | y_{\text{obs}, i})  \approx \frac{1}{\sqrt π} \sum_{h = 1}^o w_h \cdot \Big\{ &
+  \prod_{j ∈ D} ϕ_{X^t_{ij} β + \sqrt 2 σ_b ψ_h, σ^2}(y_{\text{obs}, i_j})  \cdot  \\
+  & \prod_{l ∈ L}  Φ_{X^t_{il} β + \sqrt 2 σ_b ψ_h, σ^2}( y_{\text{obs}, i_l})   \cdot  \\
+  &\prod_{r ∈ R} (1- Φ_{X^t_{ir} β + \sqrt 2 σ_b ψ_h, σ^2}( y_{\text{obs}, i_r}))  \cdot \\
+  &\prod_{k ∈ I} (Φ_{X^t_{ik} β + \sqrt 2 σ_b ψ_h, σ^2}( y_{\text{obs}, ik_{upper}}) - Φ_{X^t_{ik} β + \sqrt 2 σ_b ψ_h, σ^2}( y_{\text{obs}, ik_{lower}}) )      \Big\} 
+\end{aligned}
+$$
+
 
 ### Timing
 We use the `sleepstudy`-data and use our implementation of linear mixed models with left- and right-censoring

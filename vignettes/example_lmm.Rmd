@@ -38,7 +38,9 @@ We use a subset of the infamous `sleepstudy`-data to fit simple linear mixed mod
 
 ### Random intercept model
 
-We basically have a single parameter $\theta$ that corresponds to the root of the scaled between-subject variance.
+The single random parameter θ corresponds to the root of the scaled between-subject variance.
+Here, we examplify how our objective function (implemented in R) is created and the optimization then started manually.
+
 ```{r ex1_lmm_ranInt_sleepstudy2}
 
 lFormula(Reaction ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML) %>% 
@@ -53,7 +55,8 @@ optRes <- optimize(myDevFun_f, interval = c(0.01, 15))
 theta_h <- optRes$minimum
 attributes(optRes$objective)
 ```
-The optimization routine gives parameter estimate $\theta = `r theta_h`$ which corresponds to a scaled between-subject variance of `r theta_h^2`.
+
+The optimization routine gives parameter estimate θ = `r theta_h` which corresponds to a scaled between-subject variance of `r theta_h^2`.
 The unscaled between-subject variance is estimated as `r theta_h^2 * attr(optRes$objective, "resVar")`.
 
 
@@ -65,7 +68,8 @@ ranef(fm)
 
 
 #### LmerCens_rInt function
-We use the same data -- this time we send it through our own (direct integration) implementation for the likelihood that supports censoring.
+We use the same data -- no censoring in the response variable.
+But this time we send it through our own (direct integration) implementation for the likelihood that supports censoring.
 
 ```{r ex1_lmm_ranInt_sleepstudy2_cens}
 library(survival)

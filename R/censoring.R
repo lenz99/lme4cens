@@ -6,6 +6,9 @@
 #' @param y0 response vector of class [survival::Surv].
 #' @return response vector, normalized to interval-coding.
 prepSurvResp <- function(y0) {
+  if (! inherits(y0, "Surv") && is.numeric(y0))
+    y0 <- Surv(y0)
+
   stopifnot( inherits(y0, what = "Surv") )
 
   survType <- attr(y0, which = "type")

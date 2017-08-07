@@ -82,7 +82,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
       lm.fit(x, lmy, offset = offset, singular.ok = TRUE, method = "qr")
     else lm.wfit(x, lmy, w, offset = offset, singular.ok = TRUE, method = "qr")
 
-    setNames(c(lmfit[["coefficients"]], log(sd(lmy))),
+    setNames(c(lmfit[["coefficients"]], log(sd(lmy) + 0.001)),
              c(colnames(x), "lSigma"))
 
   } else {
@@ -173,7 +173,7 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
   # weights are applied to the log-likelihood contributions.
   # returns negative log-likelihood for given parameter vector for data sample, with positive likelihood contribution of individual observations as attribute
   negLogLikFun <- function(paramVect){
-    stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
+    stopifnot( is.numeric(paramVect), length(paramVect) == p+1L ) # residual log(σ) as extra parameter
     linPred <- x %*% paramVect[1L:p]
 
     resSD <- exp(paramVect[p+1L])
@@ -203,12 +203,15 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
   # weights are on the log-likelihood scale
   # returns gradient numeric vector of length equal to number of parameters
   negLogLikGradFun <- function(paramVect){
-    stopifnot( length(paramVect) == p+1L ) # residual log(σ) as extra parameter
+    stopifnot( is.numeric(paramVect), length(paramVect) == p+1L ) # residual log(σ) as extra parameter
     linPred <- x %*% paramVect[1:p] # nx1 vector
 
     resSD <- exp(paramVect[p+1L])
 
 
+    # the partial derivatives sum up from the individual observations
+    # we build up a matrix with n rows and p+1 columns (the order of observations [=rows] is not retained, though)
+    # we return the column sums (with negative sign because it is negative log-lik function)
 
     # point obs
     resid_obs <- (yTime1[yStat == 1L] - linPred[yStat == 1L])  # weights not fused here with the resid_obs-vector as it is used as sum-of-square and would be squared

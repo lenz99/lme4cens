@@ -32,26 +32,28 @@ VERBOSE <- 0L
 ```
 
 
+
 ## Mixed Linear Models with censored observations
 
-We use a censored version of the `sleepstudy`-data, by applying the information in column `event3` for left- and right-censored measurements of reaction time.
+We use a censored version of the `sleepstudy`-data, by applying the fixed boundary left- and right-censoring (column `event3`) on the measurements of reaction time.
 The response with these boundaries is stored in column `Reaction3`.
-We use fixed boundaries (column `event3`) for left- and right-censoring so that we can compare the results with `censReg`.
+Because of fixed boundaries for censoring we can compare the results with `censReg`.
 
 
 
 The function `lmercens` is modelled after `lme4`'s `lmer` function.
-One can specify directly own start values. Otherwise, `lmercens` chooses start values based on a `lmer` fit where censored data has been imputed.
+One can specify directly own start values. Otherwise, `lmercens` chooses start values based on a `lmer` fit where censored data had been imputed.
 
 
 ### Own start values
-We start with given start values for the parameters that stem from a ordinary `lmer`-fit on the underlying non-censored data.
+We start with given start values for the parameters that stem from an ordinary `lmer`-fit on the underlying non-censored data.
 
 ```{r ex2_sleepstudy2_lme4cens1}
 paramS <- c(260, 5, 3, 2)
 
-fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
-              start = paramS, REML = FALSE)
+fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
+                        data = sleepstudy2, 
+                        start = paramS, REML = FALSE)
 
 fm.lmercens
 ```
@@ -59,8 +61,9 @@ fm.lmercens
 
 ### Automatic start values
 ```{r ex2_sleepstudy2_lme4cens2}
-lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), data = sleepstudy2, 
-              REML = FALSE)
+lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
+         data = sleepstudy2, 
+         REML = FALSE)
 ```
 
 
