@@ -1,59 +1,60 @@
+library(survival)
 
 context("Simple linear mixed models with censoring")
 
 MY_TOL <- 1e-4
 
-test_that("Gradient of lmecens ML function with numeric GH-integration for simple linear mixed model", {
+test_that("Gradient of `lmecens` negative log-likelihood function with numeric GH-integration for simple linear mixed model", {
 
   set.seed(12345L)
 
-  # add random censoring
+  # add random censoring on 20% of observations
   sleepstudy2$event <- sample(c(TRUE, TRUE, TRUE, TRUE, FALSE), size = NROW(sleepstudy2), replace = TRUE)
+  # for interval censoring (no left censoring as we would need to have -Inf as first Reaction-time)
   sleepstudy2$Reaction2 <- sleepstudy2$Reaction + sample(c(0, 0, 0, 0, 0, 0, 0, 3, 5, 8, 8, Inf), size = NROW(sleepstudy2), replace = TRUE)
 
-  paramS <- c(260, 5, 3, 2)
 
 
   # build models ------------------------------------------------------------
 
   # no censoring, only observations
-  fm.lmercens.obs <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2,
-                          start = paramS, REML = FALSE)
+  fm.lmercens_obs <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2,
+                          REML = FALSE)
 
 
   # with left censorings
-  fm.lmercens.left <- lmercens(Surv(Reaction, event, type = "left") ~ Days + (1|Subject), data = sleepstudy2,
-                              start = paramS, REML = FALSE)
+  fm.lmercens_left <- lmercens(Surv(Reaction, event, type = "left") ~ Days + (1|Subject), data = sleepstudy2,
+                              REML = FALSE)
 
   # with right censorings
-  fm.lmercens.right <- lmercens(Surv(Reaction, event, type = "right") ~ Days + (1|Subject), data = sleepstudy2,
-                               start = paramS, REML = FALSE)
+  fm.lmercens_right <- lmercens(Surv(Reaction, event, type = "right") ~ Days + (1|Subject), data = sleepstudy2,
+                              REML = FALSE)
 
 
-  # with interval (and right) censorings
-  fm.lmercens.int <- lmercens(Surv(Reaction, time2 = Reaction2, type = "interval2") ~ Days + (1|Subject), data = sleepstudy2,
-                                start = paramS, REML = FALSE)
+  # with interval and right censorings
+  fm.lmercens_int <- lmercens(Surv(Reaction, time2 = Reaction2, type = "interval2") ~ Days + (1|Subject), data = sleepstudy2,
+                              REML = FALSE)
 
 
   # negative log-likelihood -------------------------------------------------
 
-  negLogLikFun_obs <- fm.lmercens.obs[["negLogLikFun"]]
-  negLogLikGradFun_obs <- attr(negLogLikFun_obs, "grad")
+  negLogLikFun_obs <- fm.lmercens_obs[["negLogLikFun"]]
   negLogLikFun2_obs <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_obs(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikGradFun_obs <- attr(negLogLikFun_obs, "grad")
 
 
-  negLogLikFun_left <- fm.lmercens.left[["negLogLikFun"]]
-  negLogLikGradFun_left <- attr(negLogLikFun_left, "grad")
+  negLogLikFun_left <- fm.lmercens_left[["negLogLikFun"]]
   negLogLikFun2_left <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_left(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikGradFun_left <- attr(negLogLikFun_left, "grad")
 
 
-  negLogLikFun_right <- fm.lmercens.right[["negLogLikFun"]]
-  negLogLikGradFun_right <- attr(negLogLikFun_right, "grad")
+  negLogLikFun_right <- fm.lmercens_right[["negLogLikFun"]]
   negLogLikFun2_right <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_right(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikGradFun_right <- attr(negLogLikFun_right, "grad")
 
-  negLogLikFun_int <- fm.lmercens.int[["negLogLikFun"]]
-  negLogLikGradFun_int <- attr(negLogLikFun_int, "grad")
+  negLogLikFun_int <- fm.lmercens_int[["negLogLikFun"]]
   negLogLikFun2_int <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_int(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikGradFun_int <- attr(negLogLikFun_int, "grad")
 
 
 
@@ -74,8 +75,26 @@ test_that("Gradient of lmecens ML function with numeric GH-integration for simpl
   attr(ours1_int, "gradient") <- matrix(as.vector(negLogLikGradFun_int(unlist(param1))), nrow = 1L)
 
 
+
+  param2 <- list(beta0=260, beta1=6.5, lBetwSD = 3.84, lResSD=2.91) # intercept, slope, log(σ_b) and log(σ)
+
+  ours2_obs <- as.vector(negLogLikFun_obs(unlist(param2)))
+  attr(ours2_obs, "gradient") <- matrix(as.vector(negLogLikGradFun_obs(unlist(param2))), nrow = 1L)
+
+  ours2_left <- as.vector(negLogLikFun_left(unlist(param2)))
+  attr(ours2_left, "gradient") <- matrix(as.vector(negLogLikGradFun_left(unlist(param2))), nrow = 1L)
+
+  ours2_right <- as.vector(negLogLikFun_right(unlist(param2)))
+  attr(ours2_right, "gradient") <- matrix(as.vector(negLogLikGradFun_right(unlist(param2))), nrow = 1L)
+
+  ours2_int <- as.vector(negLogLikFun_int(unlist(param2)))
+  attr(ours2_int, "gradient") <- matrix(as.vector(negLogLikGradFun_int(unlist(param2))), nrow = 1L)
+
+
+
   # assess gradient ---------------------------------------------------------
 
+  # at parmeter vector  1
   expect_equal(ours1_obs, numericDeriv(quote(negLogLikFun2_obs(beta0, beta1, lBetwSD, lResSD)),
                                         c("beta0", "beta1", "lBetwSD", "lResSD"),
                                        list2env(param1)),
@@ -97,5 +116,28 @@ test_that("Gradient of lmecens ML function with numeric GH-integration for simpl
                                          list2env(param1)),
                tolerance = MY_TOL)
 
-  expect_equal(1+1, 2L)
+
+
+  # at parmeter vector 2
+  expect_equal(ours2_obs, numericDeriv(quote(negLogLikFun2_obs(beta0, beta1, lBetwSD, lResSD)),
+                                       c("beta0", "beta1", "lBetwSD", "lResSD"),
+                                       list2env(param2)),
+               tolerance = MY_TOL)
+
+  expect_equal(ours2_left, numericDeriv(quote(negLogLikFun2_left(beta0, beta1, lBetwSD, lResSD)),
+                                        c("beta0", "beta1", "lBetwSD", "lResSD"),
+                                        list2env(param2)),
+               tolerance = MY_TOL)
+
+
+  expect_equal(ours2_right, numericDeriv(quote(negLogLikFun2_right(beta0, beta1, lBetwSD, lResSD)),
+                                         c("beta0", "beta1", "lBetwSD", "lResSD"),
+                                         list2env(param2)),
+               tolerance = MY_TOL)
+
+  expect_equal(ours2_int, numericDeriv(quote(negLogLikFun2_int(beta0, beta1, lBetwSD, lResSD)),
+                                       c("beta0", "beta1", "lBetwSD", "lResSD"),
+                                       list2env(param2)),
+               tolerance = MY_TOL)
+
 })

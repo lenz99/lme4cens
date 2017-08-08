@@ -4,6 +4,24 @@ context("Numerical stuff")
 
 MY_TOL <- 0.0001
 
+
+test_that("log(x+y)", {
+  expect_identical(logxpy(-5, -8), log(exp(-5) + exp(-8)) )
+  expect_identical(logxpy(-8, -5), log(exp(-5) + exp(-8)) )
+  # vectorized
+  expect_identical(logxpy(c(-5, -8, -7), c(-8, -8, -8)), log(exp(c(-5, -8, -7)) + exp(-8)) )
+})
+
+
+test_that("log(x-y)", {
+  expect_identical(logxmy(-5, -6),
+                   log(exp(-5) - exp(-6)))
+  # vectorized
+  expect_identical(logxmy(c(-3, -6), c(-8, -8)),
+                   log(exp(c(-3, -6)) - exp(-8)))
+})
+
+
 MU <- -1.3
 SIGMA2 <- 3.1
 

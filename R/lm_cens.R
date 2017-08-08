@@ -93,22 +93,22 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 
   # optimization -----
   # optimize the negative log-likelihood function
-  optimRes <- optim(par = start, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
+  res_optim <- optim(par = start, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
 
 
   # return value ------
-  fit_coef <- optimRes$par
+  fit_coef <- res_optim$par
   fit_vals <- x %*% fit_coef[1:p]
   if (!is.null(offset))
     fit_vals <- fit_vals + offset
 
 
 
-  z <- list(coefficients = fit_coef, logLik=-optimRes$value,
+  z <- list(coefficients = fit_coef, logLik=-res_optim$value,
             start = start,
             logLik.contribs = negLogLikFun(fit_coef),
             # hessian relates to the negative log-likelihood function
-            hess=optimRes$hessian,
+            hess=res_optim$hessian,
             fitted.values = fit_vals, y=y,
             rank = p, qr = qr(crossprod(x)),
             df.residual = NROW(x) - p - 1L,

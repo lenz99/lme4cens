@@ -10,7 +10,7 @@
 #' This subset of data is  provided with different event columns for testing purposes with double censored censoring status.
 #'
 #' * `event2` [numeric] status variable with __random__ left- and right-censoring (left cens possible below <300, right cens possible >310)
-#' * `event3` [numeric] status variable with __deterministic__ clear-cut left- and right-censoring (boundaries are <312 for Left and >350 for Right cens)
+#' * `event3` [numeric] status variable with __deterministic__ clear-cut left- and right-censoring (boundaries are <212 for Left and >350 for Right cens)
 #' * `Reaction3` [numeric] response variable with the clear-cut censoring boundaries (from `event3`) as the response for censored observations
 #'
 #' @source `lme4` package

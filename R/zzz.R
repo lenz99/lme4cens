@@ -16,27 +16,3 @@
 
 
 
-#' Efficient calculation of \code{log(1-exp(x))}.
-#'
-#' useful for some likelihood calculations, e.g. exponential distribution with left-censoring.
-#' @param x numeric, non-positive values
-#' @seealso Martin Maechler
-#' @export
-log1mexp <- function(x){
-  stopifnot( all(x <= 0L), is.numeric(x) )
-
-  log1pBranch <- x < -log(2)
-  x[log1pBranch] <- log1p(-exp(x[log1pBranch]))
-  x[!log1pBranch] <- log(-expm1(x[!log1pBranch]))
-
-  x
-}
-
-#' Calculates log(x+y) where the (small) arguments are given on log-scale.
-#'
-#' This implementation avoid underflow when numbers are small. The trick is to do the summation on log-space.
-#' @param lx 1st argument on natural log-scale
-#' @param ly 2nd argument on natural log-scale
-#' @seealso http://stackoverflow.com/questions/5802592/dealing-with-very-small-numbers-in-r
-logxpy <- function(lx,ly) max(lx,ly) + log1p(exp(-abs(lx-ly)))
-

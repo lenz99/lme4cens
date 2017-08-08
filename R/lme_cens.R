@@ -182,6 +182,12 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
 
           sbpsi <- sqrt(2L) * betwSD * xi[h]
 
+          log_diff_pnorm_int <- logxmy(pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD, log.p = TRUE),
+                 pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD, log.p = TRUE))
+
+          log_dnorm_int2 <- dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD, log = TRUE)
+          log_dnorm_int1 <- dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD, log = TRUE)
+
           ## ZZZ weights?
           factor1_ih <- prod(
             #obs
@@ -191,8 +197,12 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
             # left
             pnorm(q = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD, lower.tail = TRUE),
             # interval
-            pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-              pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD)
+            # direct naive implementation
+            # pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
+            #   pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD)
+            #
+            # numerically more robust is:
+            exp(sum(log_diff_pnorm_int))
           )
 
           vector2_ih <- c(
@@ -208,13 +218,16 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
                 - dnorm(x = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD) /
                   pnorm(q = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD, lower.tail = TRUE),
                 # interval
-                - ( dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-                      dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) ) /
-                  ( pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-                      pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) )
+                # direct naive implementation
+                # - ( dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
+                #       dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) ) /
+                #   ( pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
+                #       pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) )
+                - exp( log_dnorm_int2 - log_diff_pnorm_int) + exp( log_dnorm_int1 - log_diff_pnorm_int)
               ),
               X[c(which(yStat == 1L & subjInd), which(yStat == 0L & subjInd), which(yStat == 2L & subjInd), which(yStat == 3L & subjInd)),]
             ),
+
             # par: log(betwSD)
             sbpsi * sum(
               # obs
@@ -225,12 +238,10 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
               # left
               - dnorm(x = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD) /
                 pnorm(q = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD, lower.tail = TRUE),
-              # interval
-              - ( dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-                    dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) ) /
-                ( pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-                    pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) )
+              # interval: see for interval observations above at par betas
+              - exp( log_dnorm_int2 - log_diff_pnorm_int) + exp( log_dnorm_int1 - log_diff_pnorm_int)
             ),
+
             # par: log(resSD)
             sum(
               # obs
@@ -244,12 +255,16 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
                 pnorm(q = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD, lower.tail = TRUE) *
                 (yTime1[yStat == 2L & subjInd] - linPred[yStat == 2L & subjInd] - sbpsi),
               # interval
-              - ( dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) *
-                    (yTime2[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi) -
-                    dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) *
-                    (yTime1[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi) ) /
-                ( pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-                    pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) )
+              # naive implementation
+              # - ( dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) *
+              #       (yTime2[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi) -
+              #       dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) *
+              #       (yTime1[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi) ) /
+              #   ( pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
+              #       pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) )
+
+              - crossprod(exp( log_dnorm_int2 - log_diff_pnorm_int), yTime2[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi),
+              + crossprod(exp( log_dnorm_int1 - log_diff_pnorm_int), yTime1[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi)
 
             )
           )
@@ -287,10 +302,11 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
 #' Simple random intercept mixed models with censored response.
 #'
 #' This function is modelled after the official function `lmer`.
+#' @param method temporarily setting method for `optim` directly here
 #' @export
 lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
                       start = NULL, verbose = 0L, subset, weights, na.action, offset,
-                      contrasts = NULL, devFunOnly = FALSE, quadrature = c("gh", "stats"), gh_ord = 8L, ...)   {
+                      contrasts = NULL, devFunOnly = FALSE, quadrature = c("gh", "stats"), gh_ord = 8L, method="BFGS", ...)   {
 
   quadrature <- match.arg(quadrature)
 
@@ -334,8 +350,11 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
 
   devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(quadrature = quadrature, gh_ord = gh_ord,
                                                           verbose = verbose, control = control)))
-  if (devFunOnly)
-    return(devfun)
+
+  if (devFunOnly) return(devfun)
+
+  negLogLikGradFun <- attr(devfun, "grad")
+  ##if ( ! is.null(negLogLikGradFun)) cat("\nWe have a gradient!\n")
 
 
 
@@ -374,16 +393,18 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
 
   # optimization -----
   if (identical(control$optimizer, "none"))
-    stop("deprecated use of optimizer=='none'; use NULL instead")
+    stop("deprecated use of optimizer='none'; use NULL instead")
 
   opt <- if (length(control$optimizer) == 0L) {
-    stop("start values are required if no optimization")
+    #stop("start values are required if no optimization")
     #s <- getStart(start, environment(devfun)$lower, environment(devfun)$pp)
-    list(par = s, fixef = s[1L:p], fval = devfun(s), conv = 1000, message = "no optimization", negLogLikFun = devfun)
-  }
-  else {
-    res_optim <- optim(par = start, fn = devfun)
-    list(par = res_optim$par, fixef = res_optim$par[1L:p], fval = res_optim$value, conv = res_optim$convergence, message = "call to optim",
+    list(par = start, fixef = start[1L:p], fval = devfun(start), conv = 1000, message = "no optimization", negLogLikFun = devfun)
+  } else {
+    # ZZZ use control$optimizer setting from lmer-infrastructure, ZZZ pass ... here to optim?
+    res_optim <- optim(par = start, fn = devfun, gr = negLogLikGradFun, hessian = TRUE, method = method, control = list(trace = 1L))
+    list(par = res_optim$par, fixef = res_optim$par[1L:p], fval = res_optim$value, hess=res_optim$hessian,
+         conv = res_optim$convergence, message = paste("call to optim w/ method", method, res_optim$message,
+                                                       "with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
          start = start, negLogLikFun = devfun)
     # optimizeLmer(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,
     #              boundary.tol = control$boundary.tol, control = control$optCtrl,
