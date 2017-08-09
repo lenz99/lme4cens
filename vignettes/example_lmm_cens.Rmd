@@ -145,7 +145,8 @@ Our implementation using GH-quadrature at the same start vector gives a log-like
 
 ### Comparison with `survreg`
 `survreg` has basic support for random effects, using the `frailty()` within the formula.
-In the help-page to `frailty` they issue a warning that frailty in survreg (gamma/ml and gaussian/reml) does not lead to correct results.
+Here, we use Gaussian frailty with the default `reml`-method although
+in the help-page to `frailty` the authors issue a warning that frailty in parametric models `survreg` the combinations `gamma/ml` and `gaussian/reml` do _not_ lead to correct results.
 
 
 ```{r ex2_sleepstudy2_survreg}
