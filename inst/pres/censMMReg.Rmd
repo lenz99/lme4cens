@@ -90,24 +90,25 @@ detach("package:leukemiAnalysis")
 
 
 
-## Random left censoring
+## Random censoring
 <div class="columns-2">
 - Two random variables
     - $X$ true response variable
     - $C_l$ censoring variable
+- Example: random left censoring
 <!-- - censoring: $X < C_l$ else $X ≥ C_l$ -->
-- observe __(t, δ)__ of random vector (T, Δ)
-    - $T=\max(X, C_l);\,$ Δ ∈ {0,1} status
-    - δ=1 event: $$T = X \text{ and } X ≥ C_l$$
-    - δ=0 censoring: $$T = C_l \text{ and } X < C_l$$
+- Observable random vector (T, Δ)
+    - $T=\max(X, C_l);$ Δ ∈ {0,1} <!-- status -->
+    - Δ=1 event: $$T = X \text{ and } X ≥ C_l$$
+    - Δ=0 censoring: $$T = C_l \text{ and } X < C_l$$
 -
 
 
 Function      |  Event X  | Censoring C~l~ |
 ------------  | --------- | ----------- |
 Density       | f         |      g      |
-Cum Distrib   | F         |      G      |
-Survival      | S = 1-F   |     H = 1-G |
+Survival      | S         |      H      |
+Cum Distrib   | F = 1 - S |     G = 1-H |
 <!-- Hazard        | λ         |        μ    | -->
 
 Table: Names for functions
@@ -117,13 +118,13 @@ Table: Names for functions
 
 
 ## Likelihood Model
-> - Assume distribution for $X$ with density f~θ~ with parameter θ
+> - Assume distribution for $X$ with density f~θ~ and parameter θ
 > - Given a random sample x=(x~1~, .., x~n~)
 > - Generally: $$L(θ\,|\, x) \propto \prod_{i=1}^n f_θ(x_i)$$
 
 
 ## Density for (T, Δ)
-> - Assume independence of X and C
+> - Assume __independence__ for X and C
 \[
 \begin{aligned}
 f_{(T, Δ)}(t, Δ = 1) &= f(t) \cdot (1-H(t))\\[1.5ex]
@@ -140,18 +141,20 @@ f_{(T, Δ)}(t, δ) &= (g(t) \cdot (1-S(t)))^{1-δ} \cdot ( f(t) \cdot (1-H(t)) )
 
 
 ## Likelihood Model for Left-Censoring
-> - Likelihood
+> - Likelihood when event and censoring independent
 \[
 \begin{aligned}
 L &= \prod_{i=1}^n f(t_i, δ_i)\\
   &= \prod_{i=1}^n f(t_i)^{δ_i} (1-S(t_i))^{1-δ_i} \cdot g(t_i)^{1-δ_i} (1-H(t_i))^{δ_i}
 \end{aligned}
 \]
-> - If censoring independent of the response event:
+> - If censoring process __not__ of interest drop censoring terms:
 \[
-L \propto \prod_{i=1}^n f(t_i)^{δ_i} (1-S(t_i))^{1-δ_i} = \prod_{i∈D} f(x_i) \cdot \prod_{i∈L} [1-S(x_i)]
-\]`
-
+\begin{aligned}
+L &\propto \prod_{i=1}^n f(t_i)^{δ_i} (1-S(t_i))^{1-δ_i}\\
+  &= \prod_{i∈D} f(x_i) \cdot \prod_{i∈L} [1-S(x_i)]
+\end{aligned}
+\]
 
 ## Likelihood contributions
 
@@ -171,7 +174,7 @@ $$
 
 ## Example {.example}
 - Exponentially distributed response
-- Random right censoring, independent of the response
+- Random __right censoring__, independent of the response
 - Sample {(t~1~, δ~1~), ..., (t~n~, δ~n~)} with $r$ observed events, i.e. |D|=r.
 - Density $f(x) = λ \cdot \exp(-λ x)$ and survival $S(x) = \exp(-λ x)$ with λ > 0
 
@@ -184,11 +187,12 @@ $$
 
 ## Example {.example}
 - Exponential distribution with parameter λ > 0
-- Random left censoring, independent of the response
+- Random __left censoring__, independent of the response
 $$
 \begin{aligned}
 L(λ) &= \prod_{i∈D} f(x_i) \cdot \prod_{k∈L} [1-S(x_k)] \\
-  &= λ^r \cdot \exp(-λ \sum_{i∈D} t_i) \cdot \prod_{k∈L} (1-\exp(-λ t_k))
+  &= λ^r \cdot \exp(-λ \sum_{i∈D} t_i) \cdot \prod_{k∈L} (1-\exp(-λ t_k)) \\[1ex]
+l(λ) &= r \cdot \ln(λ) - λ \sum_{i∈D} t_i + \sum_{k∈L} \ln(1-\exp(-λ t_k)) 
 \end{aligned}
 $$
 
@@ -208,7 +212,7 @@ negLogLik_expLCens <- function(data){
     sum(log(1-exp(-l * data$T[!eventIdx])))
 }
 
-## find MLE
+## find ML-estimate
 optimize(negLogLik_expLCens(data), interval = c(0, 10))
 
 ```
@@ -230,7 +234,8 @@ survreg(Surv(T, status, type = "right") ~ 1, dist = "exp", data)
 
 
 ## Example: Tobit model {.example}
-- Linear model with left-censored response ('latent' response)  (Tobin, Econometrica, 1958)
+- Linear model with left-censored response ('latent' response)
+- Tobin, Econometrica, 1958
 $$
 \begin{aligned}
 y^* &= X β + ε \qquad \text{ with } ε\sim \N{0, σ^2\cdot I_n} \\[1ex]
@@ -274,8 +279,10 @@ sleepstudy2 %>%
 ## Example: `sleepstudy` 
 
 * Fit of random intercept model
+	* common slope between individuals
+	* individual intercept terms
 
-```{r sleepstudy2_plot2}
+```{r sleepstudy2_plot2, fig.width = 7, fig.height = 3.5}
 fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2)
 sleepstudy2$pred <- predict(fm)
 
@@ -292,14 +299,14 @@ sleepstudy2 %>%
 - Described by 2 vector-valued random variables
     - the response vector $Y$ _and_
     - the vector of random effects $B$
-- conditional distribution of $Y$ given $B=b$ is modelled as
+- conditional distribution of $Y$ given $B=b$
 $$
 Y_{\;|\; B = b} \sim \N{X\beta + Zb, \, \sigma^2 I_n}
 $$
 
+> - Conditionally on $B=b$, a simple diagonal covariance structure for $Y$
 > - $β∈ℝ^p$ fixed effects
 > - $b∈ℝ^q$ random effects
-> - Conditionally on $B=b$, a simple diagonal covariance structure for $Y$
 > - $Y$ is multivariate normal with complex covariance structure
 
 
@@ -518,10 +525,8 @@ readRDS("benchm_ghInt_rInt.rds")
 
 ```{r sleepstudy_lmeCens, echo=TRUE}
 lmercens(Surv(Reaction, time2 = Reaction, event = event2, type = "interval") ~ 
-  Days + (1|Subject), data = sleepstudy2,
-  start = c(int=260, slope=5, logS_betw=3, logS=2), REML = FALSE)
+  Days + (1|Subject), data = sleepstudy2, REML = FALSE)
 ```
-
 
 
 ## Outlook
