@@ -1,7 +1,7 @@
 #' Objective function for LMER-models implemented in R.
 #'
 #' This implements the objective function (deviance or restricted deviance).
-#' This is a test case where I can compare with the official lme4-implementation.
+#' This is a test case to compare with the official lme4-implementation.
 #' ZZZ offset?
 #'
 #' @param fr dataframe with response variable in its first column
