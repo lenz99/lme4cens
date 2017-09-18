@@ -65,7 +65,7 @@ We start with given start values for the parameters that stem from an ordinary `
 
 fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
                         data = sleepstudy2,
-                        method = "BF", 
+                        control = lmerControl(optimizer = "BF"),
                         start = paramS, REML = FALSE) 
 
 fm.lmercens
@@ -75,7 +75,7 @@ fm.lmercens
 ### Automatic start values
 ```{r ex2_sleepstudy2_lme4cens2}
 lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
-          method = "BFGS",
+         control = lmerControl(optimizer = "BFGS"),
          data = sleepstudy2, REML = FALSE)
 ```
 
@@ -115,6 +115,7 @@ We use our method and evaluate it at the `censReg`-fit (i.e. no further optimiza
 ```{r ex2_sleepstudy2_lme4censLL, echo = FALSE}
 fm.lmercens.devfun <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
          start = coef(fm.censReg), 
+         control = lmerControl(optimizer = "BFGS"),
          data = sleepstudy2, REML = FALSE, devFunOnly = TRUE)
 ll.usOnCensReg <- fm.lmercens.devfun(coef(fm.censReg))
 ```

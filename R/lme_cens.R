@@ -9,14 +9,16 @@
 #' @param fr model frame with response variable in its first column
 #' @param X design matrix of fixed effects
 #' @param reTrms list with random effect terms
-#' @param quadrature type of numeric integration method
+#' @param control an object of class `lmerControl`
 #' @return objective function which maps the parameters to the corresponding negative log-likelihood
-mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, quadrature = c("gh", "stats"), gh_ord = 8L, ...){
-
-  quadrature <- match.arg(quadrature)
+mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, control, ...){
 
   stopifnot( is.data.frame(fr), NROW(fr) > 0L )
   stopifnot( is.matrix(X), NROW(X) > 0L )
+  stopifnot( inherits(control, "lmerControl"), all(c("quadrature", "quadrature_ord") %in% names(control)) )
+
+  quadrature <- control[["quadrature"]]
+  gh_ord <- control[["quadrature_ord"]]
 
   if (isTRUE(REML)) stop("Restricted maximum likelihood not implemented, -- only ML.")
 
@@ -302,13 +304,12 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, qu
 #' Simple random intercept mixed models with censored response.
 #'
 #' This function is modelled after the official function `lmer`.
-#' @param method temporarily setting method for `optim` directly here
+#' @param control list-like control object of class `lmerControl`
 #' @export
 lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
                       start = NULL, verbose = 0L, subset, weights, na.action, offset,
-                      contrasts = NULL, devFunOnly = FALSE, quadrature = c("gh", "stats"), gh_ord = 8L, method="BFGS", ...)   {
+                      contrasts = NULL, devFunOnly = FALSE, ...)   {
 
-  quadrature <- match.arg(quadrature)
 
   stopifnot( ! missing(REML) )
 
@@ -323,6 +324,19 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
             immediate. = TRUE)
     control <- do.call(lmerControl, control)
   }
+
+  # mkuhn, 2017-09-18:
+  # handle own control parameter defaults
+  # ZZZ own sub-class from merControl?
+  if (! "quadrature" %in% names(control)){
+    control[["quadrature"]] <- "gh"
+  }
+
+  if (! "quadrature_ord" %in% names(control)){
+    control[["quadrature_ord"]] <- 8L
+  }
+
+
   if (!is.null(list(...)[["family"]])) {
     stop("calling lmercens with 'family' is not supported!")
     ## original code from `lmer`:
@@ -348,8 +362,7 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
     stop("Only simple random intercept models are supported!")
   }
 
-  devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(quadrature = quadrature, gh_ord = gh_ord,
-                                                          verbose = verbose, control = control)))
+  devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(verbose = verbose, control = control)))
 
   if (devFunOnly) return(devfun)
 
@@ -400,16 +413,19 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
     #s <- getStart(start, environment(devfun)$lower, environment(devfun)$pp)
     list(par = start, fixef = start[1L:p], fval = devfun(start), conv = 1000, message = "no optimization", negLogLikFun = devfun)
   } else {
-    # ZZZ use control$optimizer setting from lmer-infrastructure, ZZZ pass ... here to optim?
-    res_optim <- optim(par = start, fn = devfun, gr = negLogLikGradFun, hessian = TRUE, method = method, control = list(trace = 1L))
-    list(par = res_optim$par, fixef = res_optim$par[1L:p], fval = res_optim$value, hess=res_optim$hessian,
-         conv = res_optim$convergence, message = paste("call to optim w/ method", method, res_optim$message,
-                                                       "with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
-         start = start, negLogLikFun = devfun)
+    # ZZZ use optimizeLmer from lme4
     # optimizeLmer(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,
     #              boundary.tol = control$boundary.tol, control = control$optCtrl,
     #              verbose = verbose, start = start, calc.derivs = control$calc.derivs,
     #              use.last.params = control$use.last.params)
+    stopifnot( length(control$optimizer) >= 1L, is.character(control$optimizer),
+               pmatch(x = control$optimizer[1L], table = eval(formals(stats::optim)$method), nomatch = -1L) > 0L )
+
+    res_optim <- optim(par = start, fn = devfun, gr = negLogLikGradFun, hessian = TRUE, method = control$optimizer[1L], control = list(trace = 1L))
+    list(par = res_optim$par, fixef = res_optim$par[1L:p], fval = res_optim$value, hess=res_optim$hessian,
+         conv = res_optim$convergence, message = paste("call to optim w/ method", control$optimizer[1L], res_optim$message,
+                                                       "with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
+         start = start, negLogLikFun = devfun)
   }
   cc <- NULL
   # cc <- checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,

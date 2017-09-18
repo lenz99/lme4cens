@@ -2,10 +2,10 @@
 % Please edit documentation in R/lme_cens.R
 \name{mkLmerCensDevfun_rInt_R}
 \alias{mkLmerCensDevfun_rInt_R}
-\title{Factory for objective function closure for simple LMER-models with censored response for minimization.}
+\title{Factory for objective function closures for simple LMER-models with censored response.}
 \usage{
-mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0,
-  quadrature = c("gh", "stats"), gh_ord = 8L, ...)
+mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0, control,
+  ...)
 }
 \arguments{
 \item{fr}{model frame with response variable in its first column}
@@ -14,13 +14,13 @@ mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0,
 
 \item{reTrms}{list with random effect terms}
 
-\item{quadrature}{type of numeric integration method}
+\item{control}{an object of class \code{lmerControl}}
 }
 \value{
 objective function which maps the parameters to the corresponding negative log-likelihood
 }
 \description{
-This implements the objective function for simple scalar random effect models with censoring.
+This implements the negative log-likelihood (=objective function) for simple scalar random effect models with censoring.
 It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
 It uses ML, REML not implemented.
 }

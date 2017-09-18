@@ -6,8 +6,10 @@
 \usage{
 lmercens(formula, data = NULL, REML, control = lmerControl(),
   start = NULL, verbose = 0L, subset, weights, na.action, offset,
-  contrasts = NULL, devFunOnly = FALSE, quadrature = c("gh", "stats"),
-  gh_ord = 8L, ...)
+  contrasts = NULL, devFunOnly = FALSE, ...)
+}
+\arguments{
+\item{control}{list-like control object of class \code{lmerControl}}
 }
 \description{
 This function is modelled after the official function \code{lmer}.

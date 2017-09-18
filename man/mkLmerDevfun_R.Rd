@@ -16,6 +16,6 @@ objective function which maps the covariance parameters \code{theta} to the corr
 }
 \description{
 This implements the objective function (deviance or restricted deviance).
-This is a test case where I can compare with the official lme4-implementation.
+This is a test case to compare with the official lme4-implementation.
 ZZZ offset?
 }
