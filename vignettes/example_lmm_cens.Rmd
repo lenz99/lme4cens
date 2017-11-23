@@ -11,9 +11,13 @@ vignette: >
 
 
 ```{r setup, include=FALSE, message=FALSE}
-library(dplyr)
 
 devtools::dev_mode(on = TRUE)
+
+library(dplyr)
+library(optimx)
+library(knitr)
+
 ## knitr package options
 knitr::opts_knit$set(verbose = FALSE)
 options(digits = 3L)
@@ -31,8 +35,8 @@ data("sleepstudy2", package = "lme4cens")
 # verbosity-level
 VERBOSE <- 0L
 
-# start value
-paramS <- c(260, 5, 3, 2)
+# manual start value
+paramSL <- list(theta = c(3, 2), fixef = c(260, 5))
 ```
 
 
@@ -44,48 +48,69 @@ One can specify directly own start values. Otherwise, `lmercens` chooses start v
 
 
 ### sleepstudy2 data
-For data we use a censored version of the `sleepstudy`-data, by applying the fixed boundary left- and right-censoring (column `event3`) on the measurements of reaction time.
-The response with these boundaries is stored in column `Reaction3`. Because of fixed boundaries for censoring we can compare the results with `censReg`.
+For data we use a censored version of the `sleepstudy`-data,
+by applying the __fixed boundary left- and right-censoring__ (column `event3`) on the measurements of reaction time.
+The response with these boundaries is stored in column `Reaction3`.
+Because of fixed boundaries for censoring we can compare the results with `censReg`.
 
 The mean value of the observations per time point are:
 
 ```{r sleepstudy2_desc, echo = VERBOSE > 0, results='asis'}
 sleepstudy2 %>%
   dplyr::group_by_(~ Days) %>%
-  dplyr::summarise_(mReaction = ~ mean(Reaction3)) %>% 
+  dplyr::summarise_(`mean~Reaction~` = ~ mean(Reaction3), `median~Reaction~` = ~ median(Reaction3)) %>% 
   knitr::kable(digits = 0L)
 ```
 
 
 
 ### Own start values
-We start with given start values for the parameters that stem from an ordinary `lmer`-fit on the underlying non-censored data.
+We manually provide start values from an ordinary `lmer`-fit on the underlying non-censored data to the `lmercens`-call.
+Start values are:
 
+* `r paramSL$theta` for random effects _and_
+* `r paramSL$fixef` for fixed effects
+
+The model fit is: 
 ```{r ex2_sleepstudy2_lme4cens1, echo = VERBOSE > 0}
 
+# devFun <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
+#                         data = sleepstudy2, REML = FALSE, devFunOnly = TRUE)
+# devFunGrad <- attr(devFun, "grad")
+# devFun(param = unlist(paramSL))
+# devFunGrad(paramVect = unlist(paramSL))
+# numDeriv::grad(func = devFun, x = unlist(paramSL))
+
 fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
-                        data = sleepstudy2,
-                        control = lmerControl(optimizer = "BF"),
-                        start = paramS, REML = FALSE) 
+                        data = sleepstudy2, REML = FALSE,
+                        control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0),
+                        start = paramSL) 
 
 fm.lmercens
 ```
 
 
 ### Automatic start values
-```{r ex2_sleepstudy2_lme4cens2}
+If we omit the start values `lmercens` will first do a call to `lmer` where the censored observations have been imputed.
+
+```{r ex2_sleepstudy2_lme4cens2, echo = VERBOSE > 0}
 lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
-         control = lmerControl(optimizer = "BFGS"),
-         data = sleepstudy2, REML = FALSE)
+         data = sleepstudy2, REML = FALSE,
+         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0)
+)
 ```
+
+The result (at least for the intercept term) depends on the start values.
+
 
 
 
 ### Comparison with `censReg`
 
-We compare it with the results of `censReg` on the same data and using fixed start vector.
+With the package `censReg` you can fit linear mixed models where the metric response variable can be left- and/or right-censored at __fixed__ boundary values.
+We compare our results here with the results of `censReg` on the same data and using fixed start vector.
 
-```{r ex2_sleepstudy2_censReg, message = FALSE}
+```{r ex2_sleepstudy2_censReg, echo = FALSE, message = FALSE}
 
 REACT_L3 <- attr(sleepstudy2, "left3")
 REACT_R3 <- attr(sleepstudy2, "right3")
@@ -96,51 +121,69 @@ sleepstudy2 %>%
   sleepstudy2.cr
 
 fm.censReg <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3,
-                               start = paramS, nGHQ = 8L, data = sleepstudy2.cr)
+                               start = unlist(rev(paramSL)), nGHQ = 8L, data = sleepstudy2.cr)
 
 summary(fm.censReg)
 
 # likelihood contributions at censReg's optimal parameters calculated by censReg
 ll_censReg <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3,
-                               start = coef(fm.censReg), nGHQ = 8L, data = sleepstudy2.cr, logLikOnly = TRUE)
+                               start = coef(fm.censReg), nGHQ = 8L, data = sleepstudy2.cr,
+                               logLikOnly = TRUE)
 ```
 
-The fitted coefficients are different, in particular the intercept coefficient ${\hat β}_0 =$ `r fm.lmercens$par[1]` (`lme4cens`) vs `r coef(fm.censReg)[1]` (`censReg`).
-`censReg` gives as contributions per subject `r paste(round(as.vector(ll_censReg),3), collapse = ", ")`. 
+The fitted coefficients are different, in particular the fixed effect intercept coefficient:
+
+* ${\hat β}_0 =$ `r fixef(fm.lmercens)[1]` (`lme4cens`)
+* ${\hat β}_0 =$ `r coef(fm.censReg)[1]` (`censReg`)
 
 
-#### Us on `censReg`'s fit
-We use our method and evaluate it at the `censReg`-fit (i.e. no further optimization).
+
+
+#### At `censReg`'s optimal fit
+We evaluate our fit  at the optimal values from the `censReg`-fit (i.e. no further optimization).
+We look at the contribution to the log-likelihood per subject and compare the two fitting routines.
+`censReg` calculates the log-likelihood contributions per subject, together with its gradient.
 
 ```{r ex2_sleepstudy2_lme4censLL, echo = FALSE}
 fm.lmercens.devfun <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
-         start = coef(fm.censReg), 
-         control = lmerControl(optimizer = "BFGS"),
          data = sleepstudy2, REML = FALSE, devFunOnly = TRUE)
-ll.usOnCensReg <- fm.lmercens.devfun(coef(fm.censReg))
+
+ll_usOnUs <- fm.lmercens.devfun(param = fm.lmercens$par)
+ll_usOnCensReg <- fm.lmercens.devfun(coef(fm.censReg)[c(3,4,1,2)])
 ```
 
-We calculate a log-likelihood of `r as.vector(-ll.usOnCensReg)`.
-Our log-likelihood contributions at the `censReg`'s fitted parameter are `r paste(round(log(attr(ll.usOnCensReg, "lik.contribs")), 3), collapse = ", ")`.
-They are very close to `censReg`'s output. Differences are probably due to numerical issues.
+```{r ex2_sleepstudy2_LL_optimCensReg, echo = FALSE, results='asis'}
+tibble::tibble(source = c(paste("Subject", levels(sleepstudy2$Subject)), "total"), 
+               censReg = c(as.numeric(ll_censReg), sum(ll_censReg)),
+               lmercens = c(log(attr(ll_usOnCensReg, which = "lik.contribs")), -ll_usOnCensReg),
+               `Δ~lmercens-censReg~` = lmercens - censReg,
+) %>% knitr::kable(caption = "Log-likelihood contributions at __censReg__'s optimal values on sleepstudy2-data")
+```
+
+Differences between `censReg` and `lmercens` are small and are probably due to numerical issues.
 
 
 
-#### `censReg` on us
-Vice versa, we check the log-likelihood at the _optimal fit_ of our own implementation.
+#### At `lmercens`'s optimal fit
+Vice versa, we compare the log-likelihood contributions at the _optimal fit_ of `lmercens`.
 
 ```{r ex2_sleepstudy2_censRegLL, echo = FALSE}
-ll.censRegOnUs <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3,
-    start = fm.lmercens$par, logLikOnly = TRUE, nGHQ = 8L,
+ll_censRegOnUs <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3, right = REACT_R3,
+    start = fm.lmercens$par[c(3,4,1,2)], logLikOnly = TRUE, nGHQ = 8L,
     data = sleepstudy2.cr)
-
-ll.usOnUs <- fm.lmercens.devfun(param = fm.lmercens$par)
 ```
 
-`censReg` calculates the log-likelihood contributions per subject, together with its gradient.
-The log-likelihood contributions as calculated by `censReg` at our optimal parameter are `r paste(round(ll.censRegOnUs, 3), collapse = ", ")` which sum to `r sum(ll.censRegOnUs)`.
-Our implementation using GH-quadrature at the same start vector gives a log-likelihood of `r -ll.usOnUs` with subject-contributions `r paste(round(log(attr(ll.usOnUs, "lik.contribs")), 3), collapse = ", ")`.
 
+
+```{r ex2_sleepstudy2_LL_optimLmercens, echo = FALSE, results='asis'}
+tibble::tibble(source = c(paste("Subject", levels(sleepstudy2$Subject)), "total"), 
+               censReg = c(as.numeric(ll_censRegOnUs), sum(ll_censRegOnUs)),
+               lmercens = c(log(attr(ll_usOnUs, which = "lik.contribs")), -ll_usOnUs),
+               `Δ~lmercens-censReg~` = lmercens - censReg,
+) %>% knitr::kable(caption = "Log-likelihood contributions at __lmercens__'s optimal values on sleepstudy2-data")
+```
+
+The log-likelihood contributions of all subjects as estimated by `lmercens` are consistantly bigger (less negative) than by `censReg`.
 
 
 
@@ -151,7 +194,8 @@ in the help-page to `frailty` the authors issue a warning that frailty in parame
 
 
 ```{r ex2_sleepstudy2_survreg}
-fm.survreg <- survreg(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + frailty(Subject, distribution = "gaussian"),
+fm.survreg <- survreg(
+  Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + frailty(Subject, distribution = "gaussian"),
   dist = "gaussian", data = sleepstudy2)
 
 summary(fm.survreg)

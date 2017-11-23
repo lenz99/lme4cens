@@ -11,6 +11,9 @@ lmercens(formula, data = NULL, REML, control = lmerControl(),
 \arguments{
 \item{control}{list-like control object of class \code{lmerControl}}
 }
+\value{
+lmercens object
+}
 \description{
-This function is modelled after the official function \code{lmer}.
+This function is modelled like the main function \code{lmer} from package \code{lme4}.
 }

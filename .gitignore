@@ -4,9 +4,13 @@
 .RData
 .Ruserdata
 *_cache
+
+# compiled binary files
 src/*.o
 src/*.so
 src/*.dll
+
+# extra stuff from inst/
 inst/doc
 inst/lit
 inst/internal

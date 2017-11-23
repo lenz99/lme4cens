@@ -16,4 +16,18 @@
 
 
 
+# mkuhn, 2017-11-23:
+# add some S3-convenience functions for q&d lmercens
 
+#' @export
+print.lmercens <- function(obj){
+  cat("Linear Mixed Model with Censored Observations\n")
+
+  cat("\nCoefficients:\nFixed coefs: ", fixef(obj))
+  cat("\nRandom effect coefs: ", obj$par[1L:2L])
+}
+
+#' @export
+fixef.lmercens <- function(obj){
+  obj$fixef
+}

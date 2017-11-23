@@ -36,31 +36,32 @@ test_that("Gradient of `lmecens` negative log-likelihood function with numeric G
                               REML = FALSE)
 
 
+
   # negative log-likelihood -------------------------------------------------
 
   negLogLikFun_obs <- fm.lmercens_obs[["negLogLikFun"]]
-  negLogLikFun2_obs <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_obs(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikFun2_obs <- function(lBetwSD, lResSD, beta0, beta1) as.vector(negLogLikFun_obs(c(lBetwSD, lResSD, beta0, beta1)))
   negLogLikGradFun_obs <- attr(negLogLikFun_obs, "grad")
 
 
   negLogLikFun_left <- fm.lmercens_left[["negLogLikFun"]]
-  negLogLikFun2_left <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_left(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikFun2_left <- function(lBetwSD, lResSD, beta0, beta1) as.vector(negLogLikFun_left(c(lBetwSD, lResSD, beta0, beta1)))
   negLogLikGradFun_left <- attr(negLogLikFun_left, "grad")
 
 
   negLogLikFun_right <- fm.lmercens_right[["negLogLikFun"]]
-  negLogLikFun2_right <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_right(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikFun2_right <- function(lBetwSD, lResSD, beta0, beta1) as.vector(negLogLikFun_right(c(lBetwSD, lResSD, beta0, beta1)))
   negLogLikGradFun_right <- attr(negLogLikFun_right, "grad")
 
   negLogLikFun_int <- fm.lmercens_int[["negLogLikFun"]]
-  negLogLikFun2_int <- function(beta0, beta1, lBetwSD, lResSD) as.vector(negLogLikFun_int(c(beta0, beta1, lBetwSD, lResSD)))
+  negLogLikFun2_int <- function(lBetwSD, lResSD, beta0, beta1) as.vector(negLogLikFun_int(c(lBetwSD, lResSD, beta0, beta1)))
   negLogLikGradFun_int <- attr(negLogLikFun_int, "grad")
 
 
 
   # build gradient ------
 
-  param1 <- list(beta0=230, beta1=7, lBetwSD = 3.4, lResSD=2.84) # intercept, slope, log(σ_b) and log(σ)
+  param1 <- list(lBetwSD = 3.4, lResSD=2.84, beta0=230, beta1=7) # thetas: log(σ_b) and log(σ), then intercept, slope,
 
   ours1_obs <- as.vector(negLogLikFun_obs(unlist(param1)))
   attr(ours1_obs, "gradient") <- matrix(as.vector(negLogLikGradFun_obs(unlist(param1))), nrow = 1L)
@@ -76,7 +77,7 @@ test_that("Gradient of `lmecens` negative log-likelihood function with numeric G
 
 
 
-  param2 <- list(beta0=260, beta1=6.5, lBetwSD = 3.84, lResSD=2.91) # intercept, slope, log(σ_b) and log(σ)
+  param2 <- list(lBetwSD = 3.84, lResSD=2.91, beta0=260, beta1=6.5) # thetas: log(σ_b) and log(σ), then intercept, slope
 
   ours2_obs <- as.vector(negLogLikFun_obs(unlist(param2)))
   attr(ours2_obs, "gradient") <- matrix(as.vector(negLogLikGradFun_obs(unlist(param2))), nrow = 1L)
@@ -95,48 +96,48 @@ test_that("Gradient of `lmecens` negative log-likelihood function with numeric G
   # assess gradient ---------------------------------------------------------
 
   # at parmeter vector  1
-  expect_equal(ours1_obs, numericDeriv(quote(negLogLikFun2_obs(beta0, beta1, lBetwSD, lResSD)),
-                                        c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours1_obs, numericDeriv(quote(negLogLikFun2_obs(lBetwSD, lResSD, beta0, beta1)),
+                                        c("lBetwSD", "lResSD", "beta0", "beta1"),
                                        list2env(param1)),
                tolerance = MY_TOL)
 
-  expect_equal(ours1_left, numericDeriv(quote(negLogLikFun2_left(beta0, beta1, lBetwSD, lResSD)),
-                                       c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours1_left, numericDeriv(quote(negLogLikFun2_left(lBetwSD, lResSD, beta0, beta1)),
+                                        c("lBetwSD", "lResSD", "beta0", "beta1"),
                                        list2env(param1)),
                tolerance = MY_TOL)
 
 
-  expect_equal(ours1_right, numericDeriv(quote(negLogLikFun2_right(beta0, beta1, lBetwSD, lResSD)),
-                                        c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours1_right, numericDeriv(quote(negLogLikFun2_right(lBetwSD, lResSD, beta0, beta1)),
+                                         c("lBetwSD", "lResSD", "beta0", "beta1"),
                                         list2env(param1)),
                tolerance = MY_TOL)
 
-  expect_equal(ours1_int, numericDeriv(quote(negLogLikFun2_int(beta0, beta1, lBetwSD, lResSD)),
-                                         c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours1_int, numericDeriv(quote(negLogLikFun2_int(lBetwSD, lResSD, beta0, beta1)),
+                                       c("lBetwSD", "lResSD", "beta0", "beta1"),
                                          list2env(param1)),
                tolerance = MY_TOL)
 
 
 
   # at parmeter vector 2
-  expect_equal(ours2_obs, numericDeriv(quote(negLogLikFun2_obs(beta0, beta1, lBetwSD, lResSD)),
-                                       c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours2_obs, numericDeriv(quote(negLogLikFun2_obs(lBetwSD, lResSD, beta0, beta1)),
+                                       c("lBetwSD", "lResSD", "beta0", "beta1"),
                                        list2env(param2)),
                tolerance = MY_TOL)
 
-  expect_equal(ours2_left, numericDeriv(quote(negLogLikFun2_left(beta0, beta1, lBetwSD, lResSD)),
-                                        c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours2_left, numericDeriv(quote(negLogLikFun2_left(lBetwSD, lResSD, beta0, beta1)),
+                                        c("lBetwSD", "lResSD", "beta0", "beta1"),
                                         list2env(param2)),
                tolerance = MY_TOL)
 
 
-  expect_equal(ours2_right, numericDeriv(quote(negLogLikFun2_right(beta0, beta1, lBetwSD, lResSD)),
-                                         c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours2_right, numericDeriv(quote(negLogLikFun2_right(lBetwSD, lResSD, beta0, beta1)),
+                                         c("lBetwSD", "lResSD", "beta0", "beta1"),
                                          list2env(param2)),
                tolerance = MY_TOL)
 
-  expect_equal(ours2_int, numericDeriv(quote(negLogLikFun2_int(beta0, beta1, lBetwSD, lResSD)),
-                                       c("beta0", "beta1", "lBetwSD", "lResSD"),
+  expect_equal(ours2_int, numericDeriv(quote(negLogLikFun2_int(lBetwSD, lResSD, beta0, beta1)),
+                                       c("lBetwSD", "lResSD", "beta0", "beta1"),
                                        list2env(param2)),
                tolerance = MY_TOL)
 

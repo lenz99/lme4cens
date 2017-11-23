@@ -3,6 +3,7 @@
 #'
 #' This implements the negative log-likelihood (=objective function) for simple scalar random effect models with censoring.
 #' It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
+#' The variance parameters are on log-scale (as to avoid boundary issues at zero).
 #' It uses ML, REML not implemented.
 #'
 #' @export
@@ -10,8 +11,9 @@
 #' @param X design matrix of fixed effects
 #' @param reTrms list with random effect terms
 #' @param control an object of class `lmerControl`
+#' @param formula model formula passed from `lmerCens` to get start values
 #' @return objective function which maps the parameters to the corresponding negative log-likelihood
-mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, control, ...){
+mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, control, formula = stop("provide model formula"), ...){
 
   stopifnot( is.data.frame(fr), NROW(fr) > 0L )
   stopifnot( is.matrix(X), NROW(X) > 0L )
@@ -64,23 +66,51 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
   # sqrtW <- if (! is.null(w) && is.numeric(w))
   #   Matrix::Diagonal(n=n, x=sqrt(w)) else Matrix::Diagonal(n=n)
 
-  # W <- W / sum(W)
-
   # # normalize weights (necessary?)
   w <- if (is.null(w) || ! is.numeric(w)) rep(1L, n) else w / sum(w)
 
   #return(list(y=y, X=X, Zt=Zt, Lambdat=Lambdat, reTrms=reTrms, sqrtW=sqrtW))
 
 
+  # pp quick & start values -----
+  lower <- rep(-Inf, p+2L)
+  pp <- list()
+
+
+  y <- prepSurvResp(stats::model.response(fr, type = "any"))
+  stopifnot( inherits(y, "Surv"), attr(y, which = "type") == "interval" )
+
+  yMat <- as.matrix(y)
+  stopifnot( identical(colnames(yMat), c("time1", "time2", "status")) )
+
+
+  ##data_start <- data.frame(eval(mc$data))
+  # approximate y-vector for regular lmer
+  #ZZZ 2017-09-20: add bluntly a column named y_start!! I should make that safe. (e.g. check that name is not used yet)
+  #ZZZ continue here: problem: lmer has deviance function as a function of theta only, while for my lmercens the deviance is fucntion of beta and theta
+  fr$y_start <- flattenResponse(yTime1 = yMat[, "time1"], yTime2 = yMat[, "time2"], yStat = yMat[, "status"])
+  # mc$data <- quote(data_start)
+  # mc$formula <- quote(update(formula(mc$formula), y_start ~ .))
+  ##lmerObj <- eval(mc, parent.frame(1L))
+
+  # new call to lmer for start values
+  lmerStart <- do.call(what = lme4::lmer, args = list(data = fr, formula = update(formula, y_start ~ .)))
+
+  pp$theta <- log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01)
+  pp$delb <- fixef(lmerStart)
+
+
+
   # negative log-likelihood ------
+  #' @param param parameter vector, first the variance parameters
   negLogLikFun <- function(param){
     stopifnot( is.numeric(param), length(param) == p+2L ) # betw SD and residual SD (on log-scale) as extra parameter
 
-    beta <- param[1L:p]
-    linPred <- X %*% beta
     # std. deviation parameters are on log-scale
-    betwSD <- exp(param[p+1L])
-    resSD <- exp(param[p+2L])
+    betwSD <- exp(param[1L])
+    resSD <- exp(param[2L])
+    beta <- param[-c(1L,2L)]
+    linPred <- X %*% beta
 
 
 
@@ -128,6 +158,7 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
 
 
     retVal <- -sum(log(Li))
+    #if (isTRUE(logLik.contribs))
     attr(retVal, "lik.contribs") <- Li
 
     retVal
@@ -147,11 +178,11 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
     negLogLikGradFun <- function(paramVect){
       stopifnot( length(paramVect) == p+2L)
 
-      beta <- paramVect[1L:p]
-      linPred <- X %*% beta
       # std. deviation parameters are on log-scale
-      betwSD <- exp(paramVect[p+1L])
-      resSD <- exp(paramVect[p+2L])
+      betwSD <- exp(paramVect[1L])
+      resSD <- exp(paramVect[2L])
+      beta <- paramVect[-c(1L, 2L)] ## 1:p
+      linPred <- X %*% beta
 
       # weights and abscissa for GH-quadrature of order gh_ord
       ind <- which(ghQuadRule$order == gh_ord)
@@ -161,8 +192,9 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
       wi <- ghQuadRule$weight[ind]
 
       Li <- attr(negLogLikFun(paramVect), "lik.contribs")
+      stopifnot( length(Li) > 0L ) # number of subjects
 
-      # the partial derivatives is a sum of the contributions from the different subjects (e.g. levels of the random effects factor).
+      # the partial derivatives are a sum of the contributions from the different subjects (e.g. levels of the random effects factor).
       # But per subject, it's not a sum of contributions from individual observations any more because of the (numerical) integration.
       # GH transforms the integration into a sum with gh_ord summation terms.
       # We build up an array (dim: gh_ord  x  params  x  subjects), i.e. per subject (q) a matrix with gh_ord rows and p+2 columns
@@ -208,32 +240,10 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
           )
 
           vector2_ih <- c(
-            # par: betas
-            crossprod(
-              c(
-                # obs
-                (yTime1[yStat == 1L & subjInd] - linPred[yStat == 1L & subjInd] - sbpsi) / resSD^2,
-                # right
-                + dnorm(x = yTime1[yStat == 0L & subjInd], mean = linPred[yStat == 0L & subjInd] + sbpsi, sd = resSD) /
-                  pnorm(q = yTime1[yStat == 0L & subjInd], mean = linPred[yStat == 0L & subjInd] + sbpsi, sd = resSD, lower.tail = FALSE),
-                # left
-                - dnorm(x = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD) /
-                  pnorm(q = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD, lower.tail = TRUE),
-                # interval
-                # direct naive implementation
-                # - ( dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-                #       dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) ) /
-                #   ( pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
-                #       pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) )
-                - exp( log_dnorm_int2 - log_diff_pnorm_int) + exp( log_dnorm_int1 - log_diff_pnorm_int)
-              ),
-              X[c(which(yStat == 1L & subjInd), which(yStat == 0L & subjInd), which(yStat == 2L & subjInd), which(yStat == 3L & subjInd)),]
-            ),
-
             # par: log(betwSD)
             sbpsi * sum(
               # obs
-               ( yTime1[yStat == 1L & subjInd] - linPred[yStat == 1L & subjInd] - sbpsi ) / resSD^2,
+              ( yTime1[yStat == 1L & subjInd] - linPred[yStat == 1L & subjInd] - sbpsi ) / resSD^2,
               # right
               + dnorm(x = yTime1[yStat == 0L & subjInd], mean = linPred[yStat == 0L & subjInd] + sbpsi, sd = resSD) /
                 pnorm(q = yTime1[yStat == 0L & subjInd], mean = linPred[yStat == 0L & subjInd] + sbpsi, sd = resSD, lower.tail = FALSE),
@@ -267,7 +277,28 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
 
               - crossprod(exp( log_dnorm_int2 - log_diff_pnorm_int), yTime2[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi),
               + crossprod(exp( log_dnorm_int1 - log_diff_pnorm_int), yTime1[yStat == 3L & subjInd] - linPred[yStat == 3L & subjInd] - sbpsi)
+            ),
 
+            # par: betas
+            crossprod(
+              c(
+                # obs
+                (yTime1[yStat == 1L & subjInd] - linPred[yStat == 1L & subjInd] - sbpsi) / resSD^2,
+                # right
+                + dnorm(x = yTime1[yStat == 0L & subjInd], mean = linPred[yStat == 0L & subjInd] + sbpsi, sd = resSD) /
+                  pnorm(q = yTime1[yStat == 0L & subjInd], mean = linPred[yStat == 0L & subjInd] + sbpsi, sd = resSD, lower.tail = FALSE),
+                # left
+                - dnorm(x = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD) /
+                  pnorm(q = yTime1[yStat == 2L & subjInd], mean = linPred[yStat == 2L & subjInd] + sbpsi, sd = resSD, lower.tail = TRUE),
+                # interval
+                # direct naive implementation
+                # - ( dnorm(x = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
+                #       dnorm(x = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) ) /
+                #   ( pnorm(q = yTime2[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) -
+                #       pnorm(q = yTime1[yStat == 3L & subjInd], mean = linPred[yStat == 3L & subjInd] + sbpsi, sd = resSD) )
+                - exp( log_dnorm_int2 - log_diff_pnorm_int) + exp( log_dnorm_int1 - log_diff_pnorm_int)
+              ),
+              X[c(which(yStat == 1L & subjInd), which(yStat == 0L & subjInd), which(yStat == 2L & subjInd), which(yStat == 3L & subjInd)),]
             )
           )
           stopifnot( length(vector2_ih) == length(paramVect) )
@@ -301,10 +332,12 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
 
 
 
+
 #' Simple random intercept mixed models with censored response.
 #'
-#' This function is modelled after the official function `lmer`.
+#' This function is modelled like the main function `lmer` from package `lme4`.
 #' @param control list-like control object of class `lmerControl`
+#' @return lmercens object
 #' @export
 lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
                       start = NULL, verbose = 0L, subset, weights, na.action, offset,
@@ -327,7 +360,7 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
 
   # mkuhn, 2017-09-18:
   # handle own control parameter defaults
-  # ZZZ own sub-class from merControl?
+  # Idea: use own sub-class from merControl?
   if (! "quadrature" %in% names(control)){
     control[["quadrature"]] <- "gh"
   }
@@ -359,10 +392,11 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
   stopifnot( ! is.null(lmod$reTrms), ! is.null(lmod$reTrms$cnms) )
 
   if (length(lmod$reTrms$cnms) > 1L || lmod$reTrms$cnms[[1L]] != "(Intercept)" ){
-    stop("Only simple random intercept models are supported!")
+    stop("Only simple random intercept models are supported here (for now?)!")
   }
 
-  devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(verbose = verbose, control = control)))
+  ##mkuhn, 20170920: provide the formula for mkLmerCensDevfun_rInt_R to have the start-value code work (quick-pp)
+  devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(verbose = verbose, control = control, formula = formula))) #mcout$
 
   if (devFunOnly) return(devfun)
 
@@ -371,37 +405,38 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
 
 
 
-  # start value ------
-  start <- if (is.null(start) || ! length(start) %in% c(p, p+2L)){
-
-    y <- prepSurvResp(stats::model.response(lmod$fr, type = "any"))
-    stopifnot( inherits(y, "Surv"), attr(y, which = "type") == "interval" )
-
-    yMat <- as.matrix(y)
-    stopifnot( identical(colnames(yMat), c("time1", "time2", "status")) )
-
-
-
-    # update formula with call is complicated..
-    # mc[[1]] <- quote(lme4::lmer)
-    data_start <- data.frame(eval(mc$data))
-    # approximate y-vector for regular lmer
-    data_start$y_start <- flattenResponse(yTime1 = yMat[, "time1"], yTime2 = yMat[, "time2"], yStat = yMat[, "status"])
-    # mc$data <- quote(data_start)
-    # mc$formula <- quote(update(formula(mc$formula), y_start ~ .))
-    ##lmerObj <- eval(mc, parent.frame(1L))
-
-    # new call to lmer for start values
-    lmerStart <- do.call(what = lme4::lmer, args = list(data = data_start, formula = update(formula, y_start ~ .)))
-
-    c(fixef(lmerStart), log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01))
-
-  } else {
-    if (length(start) == p) start <- c(start, 0, 0)
-    start
-  }
-
-  stopifnot( is.numeric(start) )
+  # ##mkuhn, 20170920: this is for now in the deviance function
+  # # start value ------
+  # start <- if (is.null(start) || ! length(start) %in% c(p, p+2L)){
+  #
+  #   y <- prepSurvResp(stats::model.response(lmod$fr, type = "any"))
+  #   stopifnot( inherits(y, "Surv"), attr(y, which = "type") == "interval" )
+  #
+  #   yMat <- as.matrix(y)
+  #   stopifnot( identical(colnames(yMat), c("time1", "time2", "status")) )
+  #
+  #
+  #
+  #   # update formula with call is complicated..
+  #   # mc[[1]] <- quote(lme4::lmer)
+  #   data_start <- data.frame(eval(mc$data))
+  #   # approximate y-vector for regular lmer
+  #   data_start$y_start <- flattenResponse(yTime1 = yMat[, "time1"], yTime2 = yMat[, "time2"], yStat = yMat[, "status"])
+  #   # mc$data <- quote(data_start)
+  #   # mc$formula <- quote(update(formula(mc$formula), y_start ~ .))
+  #   ##lmerObj <- eval(mc, parent.frame(1L))
+  #
+  #   # new call to lmer for start values
+  #   lmerStart <- do.call(what = lme4::lmer, args = list(data = data_start, formula = update(formula, y_start ~ .)))
+  #
+  #   c(fixef(lmerStart), log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01))
+  #
+  # } else {
+  #   if (length(start) == p) start <- c(start, 0, 0)
+  #   start
+  # }
+  #
+  # stopifnot( is.numeric(start) )
 
 
   # optimization -----
@@ -413,19 +448,20 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
     #s <- getStart(start, environment(devfun)$lower, environment(devfun)$pp)
     list(par = start, fixef = start[1L:p], fval = devfun(start), conv = 1000, message = "no optimization", negLogLikFun = devfun)
   } else {
-    # ZZZ use optimizeLmer from lme4
-    # optimizeLmer(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,
-    #              boundary.tol = control$boundary.tol, control = control$optCtrl,
-    #              verbose = verbose, start = start, calc.derivs = control$calc.derivs,
-    #              use.last.params = control$use.last.params)
-    stopifnot( length(control$optimizer) >= 1L, is.character(control$optimizer),
-               pmatch(x = control$optimizer[1L], table = eval(formals(stats::optim)$method), nomatch = -1L) > 0L )
+    # delegate optimization
+    optimizeLmerCens(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,
+                 boundary.tol = control$boundary.tol, control = control$optCtrl,
+                 verbose = verbose, start = start, calc.derivs = control$calc.derivs)
 
-    res_optim <- optim(par = start, fn = devfun, gr = negLogLikGradFun, hessian = TRUE, method = control$optimizer[1L], control = list(trace = 1L))
-    list(par = res_optim$par, fixef = res_optim$par[1L:p], fval = res_optim$value, hess=res_optim$hessian,
-         conv = res_optim$convergence, message = paste("call to optim w/ method", control$optimizer[1L], res_optim$message,
-                                                       "with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
-         start = start, negLogLikFun = devfun)
+    # ZZZ adapt this old commented code  e.g. control$optimizer == 'optimx' and use instead: method = control$optCtr$method
+    # stopifnot( length(control$optimizer) >= 1L, is.character(control$optimizer),
+    #            pmatch(x = control$optimizer[1L], table = eval(formals(stats::optim)$method), nomatch = -1L) > 0L )
+    #
+    # res_optim <- optim(par = start, fn = devfun, gr = negLogLikGradFun, hessian = TRUE, method = control$optimizer[1L], control = list(trace = 1L))
+    # list(par = res_optim$par, fixef = res_optim$par[1L:p], fval = res_optim$value, hess=res_optim$hessian,
+    #      conv = res_optim$convergence, message = paste("call to optim w/ method", control$optimizer[1L], res_optim$message,
+    #                                                    "with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
+    #      start = start, negLogLikFun = devfun)
   }
   cc <- NULL
   # cc <- checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,
@@ -436,8 +472,17 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
   ## ZZZ fix the rho$pp thing of class "merPredD"
   # mkMerMod(environment(devfun), opt, lmod$reTrms, fr = lmod$fr,
   #          mc = mcout, lme4conv = cc)
-  opt
-}
 
+  # ZZZ for the time being, return own list with optimization information
+  ##opt
+  structure(  list(par = opt$par, fixef = opt$par[-c(1L, 2L)], fval = opt$fval, hess=attr(opt, "derivs")[["hessian"]],
+                   conv = opt$convergence, message = sprintf("call to %s w/ method %s. Resulting code: %d and msg: %s",
+                                                             control$optimizer[1L], control$optCtrl[["method"]], opt$ierr, opt$msg),
+                   ##"with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
+                   start = start, negLogLikFun = devfun),
+              class = "lmercens"
+  )
+
+}
 
 
