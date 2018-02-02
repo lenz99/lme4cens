@@ -52,7 +52,7 @@ by applying the __fixed boundary left- and right-censoring__ (see column `event3
 The response with these boundaries is stored in column `Reaction3`.
 Because of fixed boundaries for censoring we can compare our results with those from the package `censReg` (that allows only for fixed censoring boundaries).
 
-We use `r NROW(sleepstudy2)` observations from `r nlevels(sleepstudy2$Subject)` of the original `sleepstudy`-dataset.
+We use a subset of `r NROW(sleepstudy2)` observations from `r nlevels(sleepstudy2$Subject)` subjects of the original `sleepstudy`-dataset.
 The mean value of the observations per time point are:
 
 ```{r sleepstudy2_desc, echo = VERBOSE > 0, results='asis'}
