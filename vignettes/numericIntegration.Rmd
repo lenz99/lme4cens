@@ -3,8 +3,6 @@ title: "Numerical Integration"
 author: "MK"
 date: "2017-03-10, `r Sys.Date()`"
 output: rmarkdown::html_vignette
-params:
-  benchmark: false 
 vignette: >
   %\VignetteIndexEntry{Numerical Integration}
   %\VignetteEngine{knitr::rmarkdown}
@@ -15,12 +13,15 @@ The package uses numerical integration to calculate the likelihood contribution 
 Here, we look at some examples of integration and compare different methods of integration.
 
 
-```{r load, message=FALSE, echo=FALSE}
+```{r init, message=FALSE, echo=FALSE}
+params <- list(benchmark=FALSE)
 devtools::dev_mode(on = TRUE)
+
 library(lme4cens)
 library(microbenchmark)
 ```
 
+We `r if (isTRUE(params$benchmark)) "do " else "skip "` microtiming-benchmarks this time.
 
 ## Gauss-Hermite Quadrature
 Gaussian quadrature rules are useful to do numerical integration with fewer function evaluations than normal trapezoid rules -- if the integrand function is of appropriate form.
