@@ -13,6 +13,10 @@
 # }
 
 
+#' @importFrom survival Surv
+#' @export
+survival::Surv
+
 
 
 

@@ -15,7 +15,6 @@ vignette: >
 devtools::dev_mode(on = TRUE)
 
 library(dplyr)
-library(optimx)
 library(knitr)
 
 ## knitr package options
@@ -48,11 +47,12 @@ One can specify directly own start values. Otherwise, `lmercens` chooses start v
 
 
 ### sleepstudy2 data
-For data we use a censored version of the `sleepstudy`-data,
-by applying the __fixed boundary left- and right-censoring__ (column `event3`) on the measurements of reaction time.
+As an example dataset we use a censored version of the well-known `sleepstudy`-data,
+by applying the __fixed boundary left- and right-censoring__ (see column `event3`) on the measurements of reaction time.
 The response with these boundaries is stored in column `Reaction3`.
-Because of fixed boundaries for censoring we can compare the results with `censReg`.
+Because of fixed boundaries for censoring we can compare our results with those from the package `censReg` (that allows only for fixed censoring boundaries).
 
+We use `r NROW(sleepstudy2)` observations from `r nlevels(sleepstudy2$Subject)` of the original `sleepstudy`-dataset.
 The mean value of the observations per time point are:
 
 ```{r sleepstudy2_desc, echo = VERBOSE > 0, results='asis'}
@@ -66,26 +66,27 @@ sleepstudy2 %>%
 
 ### Own start values
 We manually provide start values from an ordinary `lmer`-fit on the underlying non-censored data to the `lmercens`-call.
-Start values are:
+Start values — stored in the list `paramSL` — are:
 
 * `r paramSL$theta` for random effects _and_
 * `r paramSL$fixef` for fixed effects
 
 The model fit is: 
-```{r ex2_sleepstudy2_lme4cens1, echo = VERBOSE > 0}
 
-# devFun <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
-#                         data = sleepstudy2, REML = FALSE, devFunOnly = TRUE)
-# devFunGrad <- attr(devFun, "grad")
-# devFun(param = unlist(paramSL))
-# devFunGrad(paramVect = unlist(paramSL))
-# numDeriv::grad(func = devFun, x = unlist(paramSL))
+<!-- # devFun <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), -->
+<!-- #                         data = sleepstudy2, REML = FALSE, devFunOnly = TRUE) -->
+<!-- # devFunGrad <- attr(devFun, "grad") -->
+<!-- # devFun(param = unlist(paramSL)) -->
+<!-- # devFunGrad(paramVect = unlist(paramSL)) -->
+<!-- # numDeriv::grad(func = devFun, x = unlist(paramSL)) -->
 
+```{r ex2_sleepstudy2_lme4cens1, echo = TRUE}
+# attach package optimx in order to use it in lme4
+library(optimx)
 fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
                         data = sleepstudy2, REML = FALSE,
                         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0),
                         start = paramSL) 
-
 fm.lmercens
 ```
 
