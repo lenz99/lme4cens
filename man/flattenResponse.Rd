@@ -2,12 +2,15 @@
 % Please edit documentation in R/censoring.R
 \name{flattenResponse}
 \alias{flattenResponse}
-\title{Get an quick approximation for a flat response vector from the Surv-response.
+\title{Get a quick approximation for a flat response vector from the \link[survival:Surv]{survival::Surv}-response.
 It is useful to get sensible start-values using ordinary regression.}
 \usage{
 flattenResponse(yTime1, yTime2, yStat)
 }
+\value{
+flattened numeric response vector
+}
 \description{
-Get an quick approximation for a flat response vector from the Surv-response.
+Get a quick approximation for a flat response vector from the \link[survival:Surv]{survival::Surv}-response.
 It is useful to get sensible start-values using ordinary regression.
 }

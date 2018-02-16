@@ -8,10 +8,10 @@ It uses the interval-coding that supports left-, right- and interval-censoring.}
 prepSurvResp(y0)
 }
 \arguments{
-\item{y0}{response vector of class \link[survival:Surv]{survival::Surv}.}
+\item{y0}{response as class \link[survival:Surv]{survival::Surv} using any coding}
 }
 \value{
-response vector, normalized to interval-coding.
+response as class \link[survival:Surv]{survival::Surv}, normalized to interval-coding.
 }
 \description{
 Prepare the survival response.

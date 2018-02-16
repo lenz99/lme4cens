@@ -27,11 +27,30 @@ survival::Surv
 print.lmercens <- function(obj){
   cat("Linear Mixed Model with Censored Observations\n")
 
+  cat("\nCall:\n", paste(deparse(obj$call), sep = "\n", collapse = "\n"),
+      "\n\n", sep = "")
   cat("\nCoefficients:\nFixed coefs: ", fixef(obj))
-  cat("\nRandom effect coefs: ", obj$par[1L:2L])
+  cat("\nRandom effect coefs: log(S_betw) = ", obj$par[1L], "\t log(S_within) = ", obj$par[2L])
+}
+
+#' Extract residual standard deviation 'sigma'
+#' @export
+sigma.lmercens <- function(obj, ...){
+  exp(obj$par[2L])
+}
+
+#' Extract the between subject standard deviation 'sigma_betw'
+#' @export
+sigmaBetw <- function(obj){
+  exp(obj$par[1L])
 }
 
 #' @export
 fixef.lmercens <- function(obj){
   obj$fixef
+}
+
+#' @export
+summary.lmercens <- function(obj){
+  print.lmercens(obj)
 }

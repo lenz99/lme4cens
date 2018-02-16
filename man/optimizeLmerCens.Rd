@@ -19,5 +19,5 @@ Results of an optimization.
 Optimization function for linear mixed models with censoring.
 }
 \seealso{
-\code{\link[lme4:optimizeLmer]{lme4::optimizeLmer()}}
+\link[lme4:optimizeLmer]{lme4::optimizeLmer}
 }

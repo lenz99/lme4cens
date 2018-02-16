@@ -5,7 +5,7 @@
 \title{Factory for objective function closures for simple LMER-models with censored response.}
 \usage{
 mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0, control,
-  formula = stop("provide model formula"), ...)
+  formula = stop("provide model formula"), start, ...)
 }
 \arguments{
 \item{fr}{model frame with response variable in its first column}
@@ -18,6 +18,8 @@ mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0, control,
 
 \item{formula}{model formula passed from \code{lmerCens} to get start values}
 
+\item{start}{list of start values}
+
 \item{param}{parameter vector, first the variance parameters}
 }
 \value{
@@ -27,5 +29,5 @@ objective function which maps the parameters to the corresponding negative log-l
 This implements the negative log-likelihood (=objective function) for simple scalar random effect models with censoring.
 It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
 The variance parameters are on log-scale (as to avoid boundary issues at zero).
-It uses ML, REML not implemented.
+It uses ML, REML currently not implemented.
 }

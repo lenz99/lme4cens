@@ -4,16 +4,17 @@
 #' This implements the negative log-likelihood (=objective function) for simple scalar random effect models with censoring.
 #' It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
 #' The variance parameters are on log-scale (as to avoid boundary issues at zero).
-#' It uses ML, REML not implemented.
+#' It uses ML, REML currently not implemented.
 #'
-#' @export
 #' @param fr model frame with response variable in its first column
 #' @param X design matrix of fixed effects
 #' @param reTrms list with random effect terms
 #' @param control an object of class `lmerControl`
 #' @param formula model formula passed from `lmerCens` to get start values
+#' @param start list of start values
 #' @return objective function which maps the parameters to the corresponding negative log-likelihood
-mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, control, formula = stop("provide model formula"), ...){
+#' @export
+mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, control, formula = stop("provide model formula"), start, ...){
 
   stopifnot( is.data.frame(fr), NROW(fr) > 0L )
   stopifnot( is.matrix(X), NROW(X) > 0L )
@@ -77,31 +78,31 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
   pp <- list()
 
 
-  y <- prepSurvResp(stats::model.response(fr, type = "any"))
-  stopifnot( inherits(y, "Surv"), attr(y, which = "type") == "interval" )
+  if (missing(start) || is.null(start)){
+    ##data_start <- data.frame(eval(mc$data))
+    # approximate y-vector for regular lmer
+    #ZZZ 2017-09-20: add bluntly a column named y_start!! I should make that safe. (e.g. check that name is not used yet)
+    #ZZZ problem: lmer has deviance function as a function of theta only, while for my lmercens the deviance is fucntion of beta and theta
+    fr$y_start <- flattenResponse(yTime1 = yMat[, "time1"], yTime2 = yMat[, "time2"], yStat = yMat[, "status"])
+    # mc$data <- quote(data_start)
+    # mc$formula <- quote(update(formula(mc$formula), y_start ~ .))
+    ##lmerObj <- eval(mc, parent.frame(1L))
 
-  yMat <- as.matrix(y)
-  stopifnot( identical(colnames(yMat), c("time1", "time2", "status")) )
+    # new call to lmer for start values
+    lmerStart <- do.call(what = lme4::lmer, args = list(data = fr, formula = update(formula, y_start ~ .)))
 
-
-  ##data_start <- data.frame(eval(mc$data))
-  # approximate y-vector for regular lmer
-  #ZZZ 2017-09-20: add bluntly a column named y_start!! I should make that safe. (e.g. check that name is not used yet)
-  #ZZZ continue here: problem: lmer has deviance function as a function of theta only, while for my lmercens the deviance is fucntion of beta and theta
-  fr$y_start <- flattenResponse(yTime1 = yMat[, "time1"], yTime2 = yMat[, "time2"], yStat = yMat[, "status"])
-  # mc$data <- quote(data_start)
-  # mc$formula <- quote(update(formula(mc$formula), y_start ~ .))
-  ##lmerObj <- eval(mc, parent.frame(1L))
-
-  # new call to lmer for start values
-  lmerStart <- do.call(what = lme4::lmer, args = list(data = fr, formula = update(formula, y_start ~ .)))
-
-  pp$theta <- log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01)
-  pp$delb <- fixef(lmerStart)
+    pp$theta <- log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01)
+    pp$delb <- fixef(lmerStart)
+  } else {
+    stopifnot( is.list(start), all(c("theta", "fixef") %in% names(start)) )
+    pp$theta <- start[["theta"]]
+    pp$delb <- start[["fixef"]]
+}
 
 
 
   # negative log-likelihood ------
+
   #' @param param parameter vector, first the variance parameters
   negLogLikFun <- function(param){
     stopifnot( is.numeric(param), length(param) == p+2L ) # betw SD and residual SD (on log-scale) as extra parameter
@@ -346,7 +347,7 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
 
   stopifnot( ! missing(REML) )
 
-  #ZZZ default arguments not taken into account by match.call
+  #ZZZ default arguments are not taken into account by match.call
   mcout <- match.call(expand.dots = TRUE)
   mc <- match.call(expand.dots = FALSE)
   missCtrl <- missing(control)
@@ -359,7 +360,7 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
   }
 
   # mkuhn, 2017-09-18:
-  # handle own control parameter defaults
+  # handle own control parameter default values
   # Idea: use own sub-class from merControl?
   if (! "quadrature" %in% names(control)){
     control[["quadrature"]] <- "gh"
@@ -383,12 +384,81 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
   mc$control <- control
   mc[[1]] <- quote(lme4::lFormula)
   lmod <- eval(mc, parent.frame(1L))
+  # save formula in mcout
   mcout$formula <- lmod$formula
-  lmod$formula <- NULL
+  ##lmod$formula <- NULL  #mkuhn, 20180215: keep it in lmod because I pass the complete lmod to lmercens.fit
 
-  p <- NCOL(lmod$X)
+  opt <- lmercens.fit(lmod, start = start, verbose = verbose, control = control, devFunOnly = devFunOnly)
 
+
+  # return value -----
+  if (isTRUE(devFunOnly)) return(opt)
+
+  ## ZZZ fix the rho$pp thing of class "merPredD"
+  # mkMerMod(environment(devfun), opt, lmod$reTrms, fr = lmod$fr,
+  #          mc = mcout, lme4conv = cc)
+
+  # ZZZ for the time being, return own list with optimization information
+  ##opt
+  structure(  list(call = mcout, ingredients = lmod, par = opt$par, fixef = opt$par[-c(1L, 2L)], fval = opt$fval, hess=attr(opt, "derivs")[["hessian"]],
+                   conv = opt$convergence, message = sprintf("call to %s w/ method %s. Resulting code: %d and msg: %s",
+                                                             control$optimizer[1L], control$optCtrl[["method"]], opt$ierr, opt$msg),
+                   ##"with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
+                   start = start, control = control, negLogLikFun = opt$devfun),
+              class = "lmercens"
+  )
+}
+
+
+#' Refit a lmercens model with a different response.
+#'
+#' Basically, open up the existing lmercens-fit and inject the new response and call [lmercens] again.
+#'
+#' @param newresp a [survival::Surv]-object carrying a censored response
+#' @return a lmercens-object from the new censored respone variable
+refit.lmercens <- function(object, newresp, control = NULL, devFunOnly = NULL, start = NULL, verbose = NULL, ...){
+  octrl <- if (! is.null(control)) control else object$control
+  ostart <- if (! is.null(start)) start else object$start
+  ocall <- object$call
+  odevFunOnly <- if (! is.null(devFunOnly)) devFunOnly else  if ("devFunOnly" %in% names(ocall)) eval(ocall$devFunOnly) else FALSE
+  overbose <- if (! is.null(verbose)) verbose else if ("verbose" %in% names(ocall)) eval(ocall$verbose) else 0L
+  lmod <- object$ingredients
+
+  # update response in model
+  lmod$formula <- update(lmod$formula, ysim ~ .)
+  attr(lmod$fr, "formula") <- lmod$formula
+
+  ocall$formula <- lmod$formula
+
+  modFrame <- lmod$fr
+  modFrame[[1L]] <- newresp
+  names(modFrame)[1L] <- "ysim"
+  lmod$fr <- modFrame
+
+  opt <- lmercens.fit(lmod, start = ostart, control = octrl, # complex arguments (i.e. with pre-processing in function lmercens) are stored in the object
+                      devFunOnly = odevFunOnly, verbose = overbose)
+
+  # return value -----
+  structure(  list(call = ocall, ingredients = lmod, par = opt$par, fixef = opt$par[-c(1L, 2L)], fval = opt$fval, hess=attr(opt, "derivs")[["hessian"]],
+                   conv = opt$convergence, message = sprintf("call to %s w/ method %s. Resulting code: %d and msg: %s",
+                                                             octrl$optimizer[1L], octrl$optCtrl[["method"]], opt$ierr, opt$message),
+                   ##"with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
+                   start = ostart, control = octrl, negLogLikFun = opt$devfun),
+              class = "lmercens"
+  )
+}
+
+
+
+
+#' Internal lmercens-fitting routine.
+#' @param lmod the description of the model as prepared by [lme4::lFormula]
+#' @param start list of start values or NULL
+#' @param devFunOnly flag if we want to have only the deviance function
+#' @return result of optimization call (or deviance function)
+lmercens.fit <- function(lmod, start = NULL, verbose = 0L, control = lmerControl(), devFunOnly){
   # objective function ------
+  p <- NCOL(lmod$X)
   stopifnot( ! is.null(lmod$reTrms), ! is.null(lmod$reTrms$cnms) )
 
   if (length(lmod$reTrms$cnms) > 1L || lmod$reTrms$cnms[[1L]] != "(Intercept)" ){
@@ -396,47 +466,16 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
   }
 
   ##mkuhn, 20170920: provide the formula for mkLmerCensDevfun_rInt_R to have the start-value code work (quick-pp)
-  devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(verbose = verbose, control = control, formula = formula))) #mcout$
+  devfun <- do.call(mkLmerCensDevfun_rInt_R, c(lmod, list(verbose = verbose, control = control, start = start))) #mcout$
 
-  if (devFunOnly) return(devfun)
+  if (isTRUE(devFunOnly)) return(devfun)
 
-  negLogLikGradFun <- attr(devfun, "grad")
+  #negLogLikGradFun <- attr(devfun, "grad")
   ##if ( ! is.null(negLogLikGradFun)) cat("\nWe have a gradient!\n")
 
 
 
-  # ##mkuhn, 20170920: this is for now in the deviance function
-  # # start value ------
-  # start <- if (is.null(start) || ! length(start) %in% c(p, p+2L)){
-  #
-  #   y <- prepSurvResp(stats::model.response(lmod$fr, type = "any"))
-  #   stopifnot( inherits(y, "Surv"), attr(y, which = "type") == "interval" )
-  #
-  #   yMat <- as.matrix(y)
-  #   stopifnot( identical(colnames(yMat), c("time1", "time2", "status")) )
-  #
-  #
-  #
-  #   # update formula with call is complicated..
-  #   # mc[[1]] <- quote(lme4::lmer)
-  #   data_start <- data.frame(eval(mc$data))
-  #   # approximate y-vector for regular lmer
-  #   data_start$y_start <- flattenResponse(yTime1 = yMat[, "time1"], yTime2 = yMat[, "time2"], yStat = yMat[, "status"])
-  #   # mc$data <- quote(data_start)
-  #   # mc$formula <- quote(update(formula(mc$formula), y_start ~ .))
-  #   ##lmerObj <- eval(mc, parent.frame(1L))
-  #
-  #   # new call to lmer for start values
-  #   lmerStart <- do.call(what = lme4::lmer, args = list(data = data_start, formula = update(formula, y_start ~ .)))
-  #
-  #   c(fixef(lmerStart), log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01))
-  #
-  # } else {
-  #   if (length(start) == p) start <- c(start, 0, 0)
-  #   start
-  # }
-  #
-  # stopifnot( is.numeric(start) )
+  #mkuhn, 20170920: start value code is for now in the deviance function
 
 
   # optimization -----
@@ -450,8 +489,8 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
   } else {
     # delegate optimization
     optimizeLmerCens(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,
-                 boundary.tol = control$boundary.tol, control = control$optCtrl,
-                 verbose = verbose, start = start, calc.derivs = control$calc.derivs)
+                     boundary.tol = control$boundary.tol, control = control$optCtrl,
+                     verbose = verbose, start = start, calc.derivs = control$calc.derivs)
 
     # ZZZ adapt this old commented code  e.g. control$optimizer == 'optimx' and use instead: method = control$optCtr$method
     # stopifnot( length(control$optimizer) >= 1L, is.character(control$optimizer),
@@ -466,23 +505,8 @@ lmercens <- function (formula, data = NULL, REML, control = lmerControl(),
   cc <- NULL
   # cc <- checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,
   #                 lbound = environment(devfun)$lower)
+  opt[["devfun"]] <- devfun
 
-
-  # return value -----
-  ## ZZZ fix the rho$pp thing of class "merPredD"
-  # mkMerMod(environment(devfun), opt, lmod$reTrms, fr = lmod$fr,
-  #          mc = mcout, lme4conv = cc)
-
-  # ZZZ for the time being, return own list with optimization information
-  ##opt
-  structure(  list(par = opt$par, fixef = opt$par[-c(1L, 2L)], fval = opt$fval, hess=attr(opt, "derivs")[["hessian"]],
-                   conv = opt$convergence, message = sprintf("call to %s w/ method %s. Resulting code: %d and msg: %s",
-                                                             control$optimizer[1L], control$optCtrl[["method"]], opt$ierr, opt$msg),
-                   ##"with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
-                   start = start, negLogLikFun = devfun),
-              class = "lmercens"
-  )
-
+  return(opt)
 }
-
 

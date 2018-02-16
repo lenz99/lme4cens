@@ -4,7 +4,7 @@
 
 #' Optimization function for linear mixed models with censoring.
 #'
-#' @seealso [lme4::optimizeLmer()]
+#' @seealso [lme4::optimizeLmer]
 #' @param devfun a deviance function
 #' @return Results of an optimization.
 #' @export
@@ -78,7 +78,6 @@ optimizeLmerCens <- function(devfun,
 #' @seealso [lme4::optwrap]
 optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
                         control = list(), calc.derivs = TRUE,
-                        #revpars = TRUE,
                         verbose = 0L)
 {
 
@@ -105,7 +104,7 @@ optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
          "optim" = control$trace <- verbose,
          ## otherwise:
          if(verbose) warning(gettextf(
-           "'verbose' not yet passed to optimizer '%s'; consider fixing optwrap()",
+           "'verbose' not yet passed to optimizer '%s'; consider fixing optwrapCens()",
            optName), domain = NA)
   )
 

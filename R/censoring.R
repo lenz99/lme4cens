@@ -3,8 +3,8 @@
 
 #' Prepare the survival response.
 #' It uses the interval-coding that supports left-, right- and interval-censoring.
-#' @param y0 response vector of class [survival::Surv].
-#' @return response vector, normalized to interval-coding.
+#' @param y0 response as class [survival::Surv] using any coding
+#' @return response as class [survival::Surv], normalized to interval-coding.
 prepSurvResp <- function(y0) {
   if (! inherits(y0, "Surv") && is.numeric(y0))
     y0 <- Surv(y0)
@@ -34,8 +34,9 @@ prepSurvResp <- function(y0) {
 
 
 
-#' Get an quick approximation for a flat response vector from the Surv-response.
+#' Get a quick approximation for a flat response vector from the [survival::Surv]-response.
 #' It is useful to get sensible start-values using ordinary regression.
+#' @return flattened numeric response vector
 flattenResponse <- function(yTime1, yTime2, yStat) {
   flat_y <- yTime1
   # interval cens: use mid-point
@@ -51,4 +52,5 @@ flattenResponse <- function(yTime1, yTime2, yStat) {
 
   flat_y
 }
+
 

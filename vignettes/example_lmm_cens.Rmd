@@ -34,7 +34,8 @@ data("sleepstudy2", package = "lme4cens")
 # verbosity-level
 VERBOSE <- 0L
 
-# manual start value
+# manual start values:
+# theta for random effect components: 1/ between and 2/ within
 paramSL <- list(theta = c(3, 2), fixef = c(260, 5))
 ```
 
@@ -68,7 +69,7 @@ sleepstudy2 %>%
 We manually provide start values from an ordinary `lmer`-fit on the underlying non-censored data to the `lmercens`-call.
 Start values — stored in the list `paramSL` — are:
 
-* `r paramSL$theta` for random effects _and_
+* `r paramSL$theta` for random effects (between and within std. deviation on log-scale) _and_
 * `r paramSL$fixef` for fixed effects
 
 The model fit is: 
@@ -97,11 +98,10 @@ If we omit the start values `lmercens` will first do a call to `lmer` where the 
 ```{r ex2_sleepstudy2_lme4cens2, echo = VERBOSE > 0}
 lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
          data = sleepstudy2, REML = FALSE,
-         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0)
-)
+         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0))
 ```
 
-The result (at least for the intercept term) depends on the start values.
+The result (at least for the intercept term) depends on the start values. Is there a local minimum where we are stuck in the optimization?
 
 
 
@@ -157,8 +157,8 @@ ll_usOnCensReg <- fm.lmercens.devfun(coef(fm.censReg)[c(3,4,1,2)])
 tibble::tibble(source = c(paste("Subject", levels(sleepstudy2$Subject)), "total"), 
                censReg = c(as.numeric(ll_censReg), sum(ll_censReg)),
                lmercens = c(log(attr(ll_usOnCensReg, which = "lik.contribs")), -ll_usOnCensReg),
-               `Δ~lmercens-censReg~` = lmercens - censReg,
-) %>% knitr::kable(caption = "Log-likelihood contributions at __censReg__'s optimal values on sleepstudy2-data")
+               `Δ~lmercens-censReg~` = lmercens - censReg) %>% 
+  knitr::kable(caption = "Log-likelihood contributions at __censReg__'s optimal values on sleepstudy2-data", digits = 3)
 ```
 
 Differences between `censReg` and `lmercens` are small and are probably due to numerical issues.
