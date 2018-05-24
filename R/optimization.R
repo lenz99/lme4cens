@@ -74,7 +74,7 @@ optimizeLmerCens <- function(devfun,
 #' optwrap for censored responses.
 #'
 #' Started as a copy of [lme4:::optwrap]
-#' then adapted to the censoring situaion (e.g. optimization is for all parameters) and simplified the code (removed some options).
+#' but adapted to the censoring situation (e.g. optimization is for all parameters) and simplified the code (removed some options).
 #' @seealso [lme4::optwrap]
 optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
                         control = list(), calc.derivs = TRUE,

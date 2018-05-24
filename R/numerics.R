@@ -1,4 +1,4 @@
-# numerical stuff on the R-side
+# numerics stuff on the R-side
 
 
 #' Numeric integration with Gauss-Hermite quadrature.

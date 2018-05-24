@@ -33,17 +33,19 @@ print.lmercens <- function(obj){
   cat("\nRandom effect coefs: log(S_betw) = ", obj$par[1L], "\t log(S_within) = ", obj$par[2L])
 }
 
-#' Extract residual standard deviation 'sigma'
+#' Extract variance estimates on standard-deviation scale
+#' @param which which type of variance estimate
 #' @export
-sigma.lmercens <- function(obj, ...){
-  exp(obj$par[2L])
+sigma.lmercens <- function(obj, which = c("residual", "between"), ...){
+  which <- match.arg(which)
+
+  switch (which,
+          between= exp(obj$par[1L]),
+          residual=,
+          exp(obj$par[2L])
+  )
 }
 
-#' Extract the between subject standard deviation 'sigma_betw'
-#' @export
-sigmaBetw <- function(obj){
-  exp(obj$par[1L])
-}
 
 #' @export
 fixef.lmercens <- function(obj){
@@ -53,4 +55,10 @@ fixef.lmercens <- function(obj){
 #' @export
 summary.lmercens <- function(obj){
   print.lmercens(obj)
+}
+
+#' Variance-covariance matrix for fixed effect coefficients
+vcov.lmercens <- function(obj, ...){
+  warning("not implemented!")
+  ###XXX continue here! (for std. errors in summary, pls!)
 }

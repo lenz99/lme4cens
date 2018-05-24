@@ -9,7 +9,7 @@ optwrapCens(optimizer, fn, par, lower = -Inf, upper = Inf,
 }
 \description{
 Started as a copy of \link[lme4:::optwrap]{lme4::::optwrap}
-then adapted to the censoring situaion (e.g. optimization is for all parameters) and simplified the code (removed some options).
+but adapted to the censoring situation (e.g. optimization is for all parameters) and simplified the code (removed some options).
 }
 \seealso{
 \link[lme4:optwrap]{lme4::optwrap}

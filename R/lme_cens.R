@@ -1,9 +1,9 @@
 
 #' Factory for objective function closures for simple LMER-models with censored response.
 #'
-#' This implements the negative log-likelihood (=objective function) for simple scalar random effect models with censoring.
+#' This implements the objective function -- i.e. the negative log-likelihood -- for simple scalar random effect models with censoring.
 #' It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
-#' The variance parameters are on log-scale (as to avoid boundary issues at zero).
+#' The variance parameters are on log-scale (as to avoid a constrained optimization that variances are non-negative).
 #' It uses ML, REML currently not implemented.
 #'
 #' @param fr model frame with response variable in its first column
@@ -14,7 +14,8 @@
 #' @param start list of start values
 #' @return objective function which maps the parameters to the corresponding negative log-likelihood
 #' @export
-mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, control, formula = stop("provide model formula"), start, ...){
+mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, control,
+                                    formula = stop("provide model formula"), start, ...){
 
   stopifnot( is.data.frame(fr), NROW(fr) > 0L )
   stopifnot( is.matrix(X), NROW(X) > 0L )
@@ -91,7 +92,7 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
     # new call to lmer for start values
     lmerStart <- do.call(what = lme4::lmer, args = list(data = fr, formula = update(formula, y_start ~ .)))
 
-    pp$theta <- log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"]+.01)
+    pp$theta <- log(as.data.frame(lme4::VarCorr(lmerStart))[, "sdcor"] + .001)
     pp$delb <- fixef(lmerStart)
   } else {
     stopifnot( is.list(start), all(c("theta", "fixef") %in% names(start)) )

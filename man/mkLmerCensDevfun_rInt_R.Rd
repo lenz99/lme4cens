@@ -26,8 +26,8 @@ mkLmerCensDevfun_rInt_R(fr, X, reTrms, REML = FALSE, verbose = 0, control,
 objective function which maps the parameters to the corresponding negative log-likelihood
 }
 \description{
-This implements the negative log-likelihood (=objective function) for simple scalar random effect models with censoring.
+This implements the objective function -- i.e. the negative log-likelihood -- for simple scalar random effect models with censoring.
 It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out because of the censoring.
-The variance parameters are on log-scale (as to avoid boundary issues at zero).
+The variance parameters are on log-scale (as to avoid a constrained optimization that variances are non-negative).
 It uses ML, REML currently not implemented.
 }

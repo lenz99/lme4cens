@@ -62,7 +62,8 @@ The unscaled between-subject variance is estimated as `r theta_h^2 * attr(optRes
 
 We compare it with the output of `lme4`:
 ```{r ex1_lmm_ranInt_sleepstudy2_lme4}
-summary(fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML))
+summary(fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2,
+                   REML=DO_REML))
 ranef(fm)
 ```
 

@@ -2,10 +2,13 @@
 % Please edit documentation in R/zzz.R
 \name{sigma.lmercens}
 \alias{sigma.lmercens}
-\title{Extract residual standard deviation 'sigma'}
+\title{Extract variance estimates on standard-deviation scale}
 \usage{
-\method{sigma}{lmercens}(obj, ...)
+\method{sigma}{lmercens}(obj, which = c("residual", "between"), ...)
+}
+\arguments{
+\item{which}{which type of variance estimate}
 }
 \description{
-Extract residual standard deviation 'sigma'
+Extract variance estimates on standard-deviation scale
 }

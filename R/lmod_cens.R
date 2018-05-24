@@ -36,6 +36,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
   p <- NCOL(x)
 
 
+
   # response variable ------
   y <- prepSurvResp(stats::model.response(mf, type = "any"))
 
@@ -214,7 +215,8 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
     # we return the column sums (with negative sign because it is negative log-lik function)
 
     # point obs
-    resid_obs <- (yTime1[yStat == 1L] - linPred[yStat == 1L])  # weights not fused here with the resid_obs-vector as it is used as sum-of-square and would be squared
+    # weights are not fused here with the resid_obs-vector as it is used as sum-of-square and would be squared
+    resid_obs <- (yTime1[yStat == 1L] - linPred[yStat == 1L])
     contrib_obs <- c(crossprod(x[yStat == 1L,], w[yStat == 1L] * resid_obs)[,1L] / resSD^2, crossprod(w[yStat == 1L] * resid_obs, resid_obs) / resSD^2 - sum(w[yStat == 1L]))
     # right cens
     factor_right <- w[yStat == 0L] * dnorm(x = yTime1[yStat == 0L], mean = linPred[yStat == 0L], sd = resSD) / pnorm(q = linPred[yStat == 0L], mean = yTime1[yStat == 0L], sd = resSD, lower.tail = TRUE)
