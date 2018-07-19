@@ -1,21 +1,23 @@
 # Censored observations in linear models
 
 
-
-
 #' Fit a linear model with censored observations.
 #'
-#' Optimization via [stats::optim()].
-#' Residuals are not implemented, yet. What is it for censored observations?
+#' Optimization via [stats::optim].
+#' Residuals are not implemented, yet. Which type of residuals are best for censored observations?
 #' @seealso [stats::lm]
 #' @param start numeric vector of start parameters. If `NULL` use ordinary linear regression for start values
 #' @param offset offset vector that is subtracted from the time variable (in
 #'   case of interval-censoring both boundaries are adapted)
+#' @param method optimization method used by [stats::optim]. Defaults to BFGS (as we have analytical gradient).
+#' @param ... further arguments passed to [stats::optim].
 #' @return list with regression fit stuff (e.g. coefficients, fitted.values
 #'   effects, rank, ..)
 #' @export
-lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NULL, start = NULL, ...){
+lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NULL, start = NULL,
+                   method = c("BFGS", "L-BFGS-B", "Nelder-Mead", "SANN", "CG"), ...){
 
+  method <- match.arg(method)
   mf <- match.call(expand.dots = FALSE)
   m <- match(x = c("formula", "data", "subset", "weights", "offset"),
              table = names(mf), nomatch = 0L)
@@ -94,7 +96,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 
   # optimization -----
   # optimize the negative log-likelihood function
-  res_optim <- optim(par = start, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, ...)
+  res_optim <- optim(par = start, fn = negLogLikFun, gr = negLogLikGradFun, hessian = TRUE, method = method, ...)
 
 
   # return value ------
@@ -112,7 +114,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
             hess=res_optim$hessian,
             fitted.values = fit_vals, y=y,
             rank = p, qr = qr(crossprod(x)),
-            df.residual = NROW(x) - p - 1L,
+            df.residual = NROW(x) - (p + 1L),
             negLogLikFun = negLogLikFun)
 
   if (! is.null(w)) z <- append(z, values = list(weights = w))
@@ -278,9 +280,9 @@ print.summary.lmcens <- function(x, digits = max(3L, getOption("digits") - 3L), 
   coefs <- x$coefficients
   stats::printCoefmat(coefs, digits = digits, na.print = "NA", signif.stars = signif.stars, ...)
 
-  cat("\nResidual standard error:", format(signif(x$sigma, digits)), "(",format(signif(log(x$sigma), digits)), "on log-scale)",
+  cat("\nResidual standard error:", format(round(x$sigma, digits)), "(",format(round(log(x$sigma), digits)), "on log-scale)",
       "on", rdf, "degrees of freedom\n")
-  cat("Log-Likelihood: ", format(signif(x$logLik), digits))
+  cat("Log-Likelihood: ", format(round(x$logLik), digits))
   cat("\n")
 
   cat("\n")

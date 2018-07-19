@@ -33,12 +33,14 @@ data("Affairs", package = "lme4cens")
 VERBOSE <- 0L
 ```
 
-We demonstrate examples for regression analysis for censored observations.
+We demonstrate examples for linear regression analysis for censored observations.
 
 
 
 ## Exponential distribution
-We generate random data (both, event and censoring independent of each other) from a Weibull distribution.
+We model an event process $X$ and a censoring process $C$.
+With right-censoring you actually observe only the earlier (min) of the two processes, while with left-censoring the later (max) of the two processes.
+We generate random data for both, event and censoring independent of each other from a Weibull distribution.
 
 ```{r expLeftCens_data}
 set.seed(123L)
@@ -47,7 +49,8 @@ N <- 230L
 
 ex_exp_lCens <- data_frame_(list(
   X = ~ rweibull(n = N, shape = 1L, scale = 1/λ),
-  Cl = ~ rweibull(n = N, shape = 1.2, scale = 1/λ-.3), # shorter mean time than for response X
+  # censoring with shorter mean time than for response X
+  Cl = ~ rweibull(n = N, shape = 1.2, scale = 1/λ-.3), 
   T = ~ pmax(X, Cl),
   status = ~ as.numeric(X >= Cl)
 ))
@@ -56,14 +59,15 @@ ex_exp_lCens <- data_frame_(list(
 
 The left-censoring does not allow for an easy analytic solution. Hence, we do an own numeric likelihood maximization.
 We use a factory function `negLogLik` that --given a data sample-- produces a negative likelihood function.
-`optimize` is R's standard function for 1-dimensional optimization.
+`optimize` is R's standard function for optimization of one parameter only.
 
 ```{r expLeftCens_logLik}
 
 # factory method for negative log-likelihood function
 # function log1mexp efficiently calculates log(1-exp(x))
 negLogLik <- function(data){
-  stopifnot( is.data.frame(data), all(c("T", "status") %in% names(data)) )
+  stopifnot( is.data.frame(data),
+             all(c("T", "status") %in% names(data)) )
   
   nbrEvents <- sum(data$status)
   eventIdx <- data$status == 1L
@@ -73,8 +77,7 @@ negLogLik <- function(data){
 }
 
 
-optimize(negLogLik(data = ex_exp_lCens),
-         interval = c(0, 10))
+optimize(negLogLik(data = ex_exp_lCens), interval = c(0, 10))
 ```
 
 The same result can be achieved via `survival::survreg`:
@@ -86,7 +89,7 @@ fm.exp
 ```
 
 
-The linear predictor η is transformed to our λ via 1/exp(η),
+`survreg`'s linear predictor η is transformed to our λ via 1/exp(η),
 i.e. λ = 1/ exp(`r coef(fm.exp)`) = `r exp(-coef(fm.exp))`.
 
 
@@ -95,24 +98,35 @@ i.e. λ = 1/ exp(`r coef(fm.exp)`) = `r exp(-coef(fm.exp))`.
 
 
 
-## Linear Regression with censored observations: Tobit-model
+## Tobit-model: linear regression with censored observations
 
-Tobit model uses normal error. In order to compare our fits with fits from other packages we use a fixed censoring value for all observations.
-Here we use the `Affairs`-data as an example with left-censored response at 0.
+Tobit model assumes normal error distribution around the mean that is described by an equation that is linearly parameterized. 
 
-We have prepared a column `event` that encodes for the censoring at 0:
+In order to compare our fits with fits from other packages we use a fixed censoring value for all observations.
+Here we use the `Affairs`-data as an example with left-censored response.
+The response is self-reported _number of affairs_ in the previous year and is a non-negative integer.
+In order to use linear regression we treat values 0 as left-censored
+(i.e. we allow to model a response with also negative values but we do not observe these negative values).
+Different characteristics of the person and its marriage serve as predictors.
+
+We have prepared a column `event` that encodes for the left-censoring at 0:
 ```{r affairs_event_boxplot}
 boxplot(affairs ~ event, data = Affairs, xlab = "Variable 'event'", ylab = "Number of affairs")
 ```
 
 
 ### Simple regression
-We start with a single predictor `yearsmarried`. We use default Nelder-Mead and BFGS with gradient.
+We start with a single predictor `yearsmarried`. We use default BFGS and Nelder-Mead with gradient.
 
-```{r affairs_simple_lmcens}
-fm.aff.simple <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried, data = Affairs)
+#### Nelder-Mead
+```{r affairs_simple_lmcens_NM}
+fm.aff.simple <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried, data = Affairs,
+                        method = "Nelder")
 summary(fm.aff.simple)
+```
 
+#### BFGS
+```{r affairs_simple_lmcens_BFGS}
 fm.aff.simple.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ yearsmarried,
                              method = "BFGS",
                              data = Affairs)
@@ -132,10 +146,11 @@ The results of both model fitting routines do agree.
 
 #### `survreg`
 Parametric regression is supported in `survival::survreg` function, also known as accelerated failure time (AFT) models.
-It allows for different error distributions. We choose `'gaussian'` to specify the same model:
+It allows for different error distributions. We choose `'gaussian'` to specify the same model as before:
 
 ```{r affairs_simple_survreg, echo = FALSE}
-fm.aff.simple.censreg <- survreg(Surv(affairs, event, type = "left") ~ yearsmarried, dist = "gaussian", data = Affairs)
+fm.aff.simple.censreg <- survreg(Surv(affairs, event, type = "left") ~ yearsmarried,
+                                 dist = "gaussian", data = Affairs)
 summary(fm.aff.simple.censreg)
 ```
 
@@ -145,18 +160,21 @@ summary(fm.aff.simple.censreg)
 
 ### Multiple regression
 
+Now, we consider more than one regression variable.
 
-We use Nelder-Mead (NM) optimization by default.  
+#### Nelder-Mead
+If we use Nelder-Mead (NM) optimization we get this fit:
 ```{r affairs_multiple_lmcens}
 fm.aff <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
-                 data = Affairs)
+                 method = "Nelder", data = Affairs)
 
 summary(fm.aff)
 ```
 
 NM does not use the gradient information and therefore easily gets stuck in a local maximum of the log-likelihood funciton.
 
-Now, we use `BFGS` as optimization method.
+#### BFGS method
+Now, we use `lmcens`'s standard optimization method `BFGS` as optimization method.
 
 ```{r affairs_multiple_lmcens_bfgs}
 fm.aff.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
@@ -170,7 +188,7 @@ summary(fm.aff.bfgs)
 
 #### Effect of bad start values
 
-When we use the BFGS-optimization method with rough start values (all zeros) we get no convergence at a good model:
+When we use the BFGS-optimization method with rough start values (all zeros) we get no convergence at a good model fit:
 
 ```{r affairs_multiple_lmcens_bfgs_badStart}
 fm.aff.bfgs.badstart <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
@@ -203,41 +221,51 @@ summary(fm.aff.censreg)
 The coefficients are very close to those of our `BFGS`-fit!!
 
 
+
+
 #### Double checks
 
-##### Likelihood contributions
-We look into the log-likelihood contributions per observations of the NM-fit, once in our implementation and the `censReg` implementation.
+We compare likelihood contributions at different parameter values
+
+##### lmcens-NM 
+We look into the log-likelihood contributions per observations of the final Nelder-Mead fit after auto-start,
+once in our implementation and then via `censReg` implementation.
 The contriubtions really coincide.
 
-```{r ex1_compare_logLiks}
+```{r ex1_compare_logLiks, fig.width=6, fig.height=6}
 llContribs <- attr(fm.aff$logLik.contribs, "loglik.contribs")
 llContribs.censreg <- update(fm.aff.censreg, start = coef(fm.aff), logLikOnly = TRUE)
 
-MASS::eqscplot(x = llContribs, y = llContribs.censreg); abline(0,1, col = "grey", lty = 2)
+MASS::eqscplot(x = llContribs, y = llContribs.censreg, pch = 16, cex = 0.75); abline(0,1, col = "grey", lty = 2)
 ```
 
 The log-likelihood for the optimal fit from `lmcens` is calculated by `censReg` as `r sum(llContribs.censreg)`.
 
 
-##### NM with good start values
-When we start our `lmcens` with the parameter estimates of `censReg` (rounded on 1 digit) using Nelder-Mead we stay in that optimum region and get very similar results:
+##### NM with good start values from `censReg`
+When we start our `lmcens` with the parameter estimates of `censReg` (rounded on 1 digit) using Nelder-Mead we stay in that optimum region and get very similar results than what `censReg` delivers:
 ```{r ex1_lmcens_affairs_censRegStart}
 fm.aff2 <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
                   start = round(coef(fm.aff.censreg),3),
+                  method = "Nelder",
                   data = Affairs)
 
 summary(fm.aff2)
 ```
+So, Nelder-Mead is OK even for multiple regression as long as you have good start values, close enough to optimal values.
 
-##### Likelihood contributions at `censReg`-start values
-We plot the log-likelihood contributions from our fitted `lmcens`-model with start parameters coming from `censReg`-fit and also calculate these contributions via the `censReg`-package.
+##### lmcens-NM after `censReg`-start values
+We plot the log-likelihood contributions from fitted `lmcens`-model with Nelder-Mead 
+with start parameters coming from `censReg`-fit
+and also calculate these contributions via the `censReg`-package.
 
-```{r ex1_compare_logLiks2}
+```{r ex1_compare_logLiks2, fig.width=7, fig.height=7}
 llContribs2 <- attr(fm.aff2$logLik.contribs, "loglik.contribs")
 llContribs2.censreg <- update(fm.aff.censreg, start = coef(fm.aff2), logLikOnly = TRUE)
 
 MASS::eqscplot(x = llContribs2, y = llContribs2.censreg); abline(0,1, col = "grey", lty = 2)
 ```
+We see also a good agreement of the differently calculated log-likelihood contributions.
 
 
 
@@ -280,7 +308,7 @@ w[wPos] <- 2.5
 
 
 fm.aff.w.nm <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried + religiousness + occupation + rating,
-              weights = w, data = Affairs)
+              weights = w, method = "Nelder", data = Affairs)
 summary(fm.aff.w.nm)
 ```
 
@@ -294,7 +322,7 @@ fm.aff.w.bfgs <- lmcens(Surv(affairs, event, type = "left") ~ age + yearsmarried
                         weights = w, data = Affairs)
 summary(fm.aff.w.bfgs)
 ```
-
+BFGS comes to a fit with better log-likelihood. 
 
 
 #### survreg
