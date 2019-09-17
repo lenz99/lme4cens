@@ -15,5 +15,5 @@ lmercens(formula, data = NULL, REML, control = lmerControl(),
 lmercens object
 }
 \description{
-This function is modelled like the main function \code{lmer} from package \code{lme4}.
+This function is modelled like the main function \link[lme4:lmer]{lme4::lmer}.
 }

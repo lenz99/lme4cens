@@ -7,7 +7,7 @@
 #' Residuals are not implemented, yet. Which type of residuals are best for censored observations?
 #' @seealso [stats::lm]
 #' @param start numeric vector of start parameters. If `NULL` use ordinary linear regression for start values
-#' @param offset offset vector that is subtracted from the time variable (in
+#' @param offset offset vector that is subtracted from the response variable (in
 #'   case of interval-censoring both boundaries are adapted)
 #' @param method optimization method used by [stats::optim]. Defaults to BFGS (as we have analytical gradient).
 #' @param ... further arguments passed to [stats::optim].
@@ -144,7 +144,7 @@ lmcens <- function(formula, data, subset, weights, contrasts = NULL, offset = NU
 #' @param yStat status variable in interval style
 #' @param w weights vector
 #' @param offset offset vector, can be `NULL`
-#' @return negative log-likelihood as objective function
+#' @return negative log-likelihood as objective function. Attribute \code{grad} contains the analytical gradient.
 #'
 #' @export
 lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){

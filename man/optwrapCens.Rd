@@ -7,9 +7,12 @@
 optwrapCens(optimizer, fn, par, lower = -Inf, upper = Inf,
   control = list(), calc.derivs = TRUE, verbose = 0L)
 }
+\arguments{
+\item{optimizer}{specifies optimization method, either directly as function object or as function name (as character)}
+}
 \description{
 Started as a copy of \link[lme4:::optwrap]{lme4::::optwrap}
-but adapted to the censoring situation (e.g. optimization is for all parameters) and simplified the code (removed some options).
+but adapted to the censoring situation (e.g. optimization is for all parameters) and removed some options.
 }
 \seealso{
 \link[lme4:optwrap]{lme4::optwrap}

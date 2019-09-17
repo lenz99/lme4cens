@@ -6,19 +6,21 @@ output:
   rmarkdown::html_vignette:
     fig_caption: yes
     toc: true
+    df_print: kable
 vignette: >
-  %\VignetteIndexEntry{Example: sleepstudy}
+  %\VignetteIndexEntry{Example analysis of simple linear mixed models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
-
-library(dplyr)
-devtools::dev_mode(on = TRUE)
 ## knitr package options
 knitr::opts_knit$set(verbose = FALSE)
 options(digits = 3L)
+
+
+library(dplyr)
+devtools::dev_mode(on = TRUE)
 
 library(lme4cens)
 
@@ -34,7 +36,17 @@ DO_REML <- FALSE
 We test our linear mixed model R-routines with some small examples and compare the fit with the fit of the official `lme4` implementation.
 We use a subset of the infamous `sleepstudy`-data to fit simple linear mixed models.
 
+Throughout, we use `r if (DO_REML) "__REML__" else "__ML__"` for model fitting.
 
+If no censoring occurs, the optimization function (e.g. log-likelihood for ML) is parameterized by
+the variance parameters θ for the random effects.
+The fixed effect estimates and residual variance follow, given the variance parameters θ.
+
+In case of censoring I do not see an easy way to also profile out these parameters.
+
+
+
+## Re-Implementation following `lme4`
 
 ### Random intercept model
 
@@ -52,15 +64,16 @@ lFormula(Reaction ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML) %>%
 # one-dimensional minimization on theta-parameter
 optRes <- optimize(myDevFun_f, interval = c(0.01, 15))
 
-theta_h <- optRes$minimum
+(theta_h <- optRes$minimum)
 attributes(optRes$objective)
 ```
 
-The optimization routine gives parameter estimate θ = `r theta_h` which corresponds to a scaled between-subject variance of `r theta_h^2`.
-The unscaled between-subject variance is estimated as `r theta_h^2 * attr(optRes$objective, "resVar")`.
+The optimization routine gives parameter estimate $\hat{θ} =$ `r theta_h`.
+The squared estimate is the estimated scaled between-subject variance, $\hat{θ}^2 =$  `r theta_h^2`.
+The unscaled between-subject variance is hence estimated as $\hat{σ}^2 · \hat{θ}^2 =$ `r attr(optRes$objective, "resVar") * theta_h^2`.
 
 
-We compare it with the output of `lme4`:
+The estimates match those of `lme4`:
 ```{r ex1_lmm_ranInt_sleepstudy2_lme4}
 summary(fm <- lmer(Reaction ~ Days + (1|Subject), data = sleepstudy2,
                    REML=DO_REML))
@@ -68,42 +81,19 @@ ranef(fm)
 ```
 
 
-#### LmerCens_rInt function
-We use the same data -- no censoring in the response variable.
-But this time we send it through our own (direct integration) implementation for the likelihood that supports censoring.
-
-```{r ex1_lmm_ranInt_sleepstudy2_cens}
-library(survival)
-
-# Gauss-Hermite quadrature
-fm <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML,
-         start = list(theta = c(3, 2), fixef = c(260, 5)), control = lmerControl(optimizer = "Nelder_Mead"))
-
-fm$par
-```
-
-
-The fixed effect parameters that come out are
-
-* intercept β~0~ = `r round(fm$par[1], 4L)` _and_ 
-* slope β~1~ = `r round(fm$par[2], 4L)`.
-
-The between-subject variance is estimated as `r sprintf("%4.f", exp(2*fm$par[1]))`
-while the residual variance as `r sprintf("%4.f", exp(2*fm$par[2]))`.
-The likelihood is `r -fm$fval`.
 
 
 
 
 
-#### With weighting
+### Random Intercept With weighting
 We apply an arbitary weighting to the observations.
 
 ```{r ex2_lmm_ranInt_w_sleepstudy2}
 w_sleepstudy2 <- rep(c(rep(2,3), rep(1,7)), 4)
 stopifnot( length(w_sleepstudy2) == NROW(sleepstudy2) )
 
-lFormula(Reaction ~ Days + (1|Subject),
+lFormula(Reaction ~ Days + (1|Subject), REML = DO_REML,
          weights = w_sleepstudy2, data = sleepstudy2) %>% 
   append(values = list(verbose=VERBOSE)) %>% 
   do.call(mkLmerDevfun_R, .) ->
@@ -117,18 +107,17 @@ theta_h <- optRes$minimum
 attributes(optRes$objective)
 ```
 
-The optimization routine gives $\theta = `r theta_h`$ which corresponds to a scaled between-subject variance of `r theta_h**2`.
+The optimization routine gives $\hat θ =$ `r theta_h` which corresponds to an estimated scaled between-subject variance of `r theta_h**2`.
 The unscaled between-subject variance is estimated as `r theta_h^2 * attr(optRes$objective, "resVar")`.
 
-We compare it with the output of `lme4`:
+The results match the results from `lme4`:
 ```{r ex2_lmm_ranInt_w_sleepstudy2_lme4}
 fm <- lmer(Reaction ~ Days + (1|Subject),
-            weights = w_sleepstudy2, 
-             data = sleepstudy2, REML=T)
-ranef(fm)
+           weights = w_sleepstudy2, 
+           data = sleepstudy2, REML=DO_REML)
 summary(fm)
+ranef(fm)
 ```
-
 
 
 
@@ -136,17 +125,17 @@ summary(fm)
 ### Random intercept-slope model
 
 We have $k=1$ random-effect factor with $l_1 = 4$ levels and $p_1 = 2$ columns (intercept and `Days`).
-Here, $\theta$ is a three-dimensional parameter.
-```{r ex1_lmm_ranIntSlo_sleepstudy2}
+Here, $θ$ is a three-dimensional parameter.
 
-lFormula(Reaction ~ Days + (Days|Subject), data = sleepstudy2, REML=T) %>% 
+```{r ex1_lmm_ranIntSlo_sleepstudy2}
+lFormula(Reaction ~ Days + (Days|Subject), data = sleepstudy2, REML=DO_REML) %>% 
   append(values = list(verbose=VERBOSE)) %>% 
   do.call(mkLmerDevfun_R, .) ->
   
   myDevFun_f
 
 # three-dimensional minimization of theta-parameter
-optRes <- optim(par = c(1, 0, 1), fn = myDevFun_f)
+optRes <- optim(par = c(1, 0, 1), fn = myDevFun_f, method = "BFGS")
 
 theta_h <- optRes$par
 
@@ -154,7 +143,7 @@ modelParamEstim <- attributes(myDevFun_f(theta = theta_h))
 modelParamEstim
 ```
 
-The optimization routine gives $\theta = ( `r theta_h` )$ which builds to the relative covariance factor:
+The optimization routine gives $θ = ( `r theta_h` )$ which builds to the relative covariance factor:
 ```{r ex1_lmm_ranIntSlo_sleepstudy2_relCoVar, echo=FALSE, results='markup'}
 nc <- 2
 rowIndices <- rep(1:nc, 1:nc)
@@ -166,8 +155,9 @@ relCovarFactor
 ```
 
 The estimates on the diagonal of the relative covariance factor are by convention taken as absolute value,
-the sign does not matter for the resulting estimated covariance-matrix $\Sigma_\theta$ of the random-effects vector B.
-It is $\Sigma_\theta = \sigma^2 \Lambda_\theta \Lambda_\theta^T$.
+the sign does not matter for the resulting estimated covariance-matrix $Σ_θ$ of the random-effects vector B.
+It is $Σ_θ = σ^2 Λ_θ Λ_θ^T$.
+
 ```{r ex1_lmm_ranIntSlo_sleepstudy2_REcovar}
 modelParamEstim[["resVar"]] * Matrix::tcrossprod(relCovarFactor)
 cov2cor(modelParamEstim[["resVar"]] * Matrix::tcrossprod(relCovarFactor))
@@ -176,8 +166,7 @@ cov2cor(modelParamEstim[["resVar"]] * Matrix::tcrossprod(relCovarFactor))
 
 We compare it with the output of `lme4`:
 ```{r ex1_lmm_ranIntSlo_sleepstudy2_lme4}
-summary(fm <- lmer(Reaction ~ Days + (Days|Subject),
-                   data = sleepstudy2, REML=T))
+summary(fm <- lmer(Reaction ~ Days + (Days|Subject), data = sleepstudy2, REML=DO_REML))
 ranef(fm)
 ```
 
@@ -191,7 +180,7 @@ We have a randomized complete block design (RCBD), i.e. each sample is measured 
 
 ```{r ex2_lmm_crossed_Penicillin} 
 data("Penicillin", package = "lme4")
-lFormula(diameter ~ (1|plate) + (1|sample), data = Penicillin, REML = TRUE) %>% 
+lFormula(diameter ~ (1|plate) + (1|sample), data = Penicillin, REML = DO_REML) %>% 
   append(list(verbose=VERBOSE)) %>% 
   do.call(mkLmerDevfun_R, .) ->
   
@@ -207,13 +196,13 @@ modelParamEstim <- attributes(myDevFun_f(theta = theta_h))
 modelParamEstim
 ```
 
-The optimization routine gives $\theta = ( `r theta_h` )$ which corresponds to two scaled between-subject variance of $(`r theta_h**2`)$.
+The optimization routine gives $θ = ( `r theta_h` )$ which corresponds to two scaled between-subject variance of $(`r theta_h**2`)$.
 The unscaled between-subject variances for the two random effects are estimated as $(`r theta_h^2 * modelParamEstim$resVar`)$.
 
 
 We compare it with the standard `lme4`-output of the same model specification:
 ```{r ex2_lmm_crossed_Penicillin_lme4}
-summary(fm <- lmer(diameter ~ (1|plate) + (1|sample), data = Penicillin, REML = TRUE))
+summary(fm <- lmer(diameter ~ (1|plate) + (1|sample), data = Penicillin, REML = DO_REML))
 ranef(fm)
 ```
 
@@ -230,9 +219,9 @@ $k=2$ different factors with simple ($p_1 = p_2 = 1$) random effects:
 * batch effect
 * cask effect within batch
 
-Hence, $\theta$ consists of two parameters.
+Hence, $θ$ consists of two parameters.
 ```{r ex3_lmm_nested_Pastes}
-lFormula(strength ~ (1|batch/cask), data = Pastes, REML=T) %>% 
+lFormula(strength ~ (1|batch/cask), data = Pastes, REML=DO_REML) %>% 
   append(values = list(verbose=VERBOSE)) %>% 
   do.call(mkLmerDevfun_R, .) ->
   
@@ -246,12 +235,107 @@ theta_h <- optRes$par
 modelParamEstim <- attributes(myDevFun_f(theta = theta_h))
 modelParamEstim
 ```
+
+The optimization yields $\hat θ = ( `r theta_h`)$ 
+which corresponds to two scaled between-subject variance of $(`r theta_h**2`)$.
+
+The unscaled between-subject variances for the two random effects are estimated as $(`r theta_h^2 * modelParamEstim$resVar`)$.
 The last ten random effect predictions are for the batch effect.
-I think the `batch:cask` factor comes first as it has more levels.
+I guess the `batch:cask` factor comes first as it has more levels.
 
 We compare it with the `lme4`-result:
 ```{r ex3_lmm_nested_Pastes_lme4}
-summary(fm <- lmer(strength ~ (1|batch/cask), data = Pastes, REML=T))
+summary(fm <- lmer(strength ~ (1|batch/cask), data = Pastes, REML=DO_REML))
 ranef(fm)
 ```
+
+
+
+
+
+
+## Own Implementation (allowing for censoring)
+
+We consider again the simplest case of a linear mixed effect model, the simple random intercept model on the `sleepstudy2`-data.
+With `lme4` we had:
+
+```{r ref.label="ex1_lmm_ranInt_sleepstudy2_lme4", results='markup'}
+```
+
+
+We use the same data -- no censoring in the response variable.
+But this time we send it through our own (direct integration) implementation for the likelihood that supports censoring.
+Concretely, we wrap the response into `Surv` (with no status variable as we have no censoring in the dataset)
+and call the function `lmercens` that internally uses `mkLmerCensDevfun_rInt_R` to build the optimization function.
+
+One big difference to the standard implementation (without censoring) is that we optimize _four_ parameters instead of a single _one_, namely
+
+* two variance parameters σ~bw~ and σ~res~ on log scale _and_
+* two fixed effect parameters β~int~ and β~slope~.
+
+Also, the between-subject parameter σ~bw~ is un-scaled, i.e. _not_ scaled by the residual variance.
+
+```{r ex1_lmm_ranInt_sleepstudy2_cens, warning=FALSE, echo = FALSE, results='asis'}
+library(survival)
+library(optimx)
+
+parNames <- c("ln(σ~bw~)", "ln(σ~res~)", "β~int~", "β~slo~")
+startL <- list(theta = c(3, 2), fixef = c(260, 5))
+
+# Gauss-Hermite quadrature with Nelder-Mead optimizer
+fm_nm <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML,
+         start = startL, control = lmerControl(optimizer = "Nelder_Mead"))
+
+# Gauss-Hermite quadrature with bobyqa optimizer
+fm_bo <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML,
+         start = startL, control = lmerControl(optimizer = "bobyqa"))
+
+# Gauss-Hermite quadrature with BFGS
+fm_bfgs <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy, REML=DO_REML,
+                    start = startL, control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B")))
+
+
+# display results
+dplyr::inner_join(
+  x=dplyr::inner_join(
+    x= c(fm_nm$par, -fm_nm$fval, exp(2*fm_nm$par[1]), exp(2*fm_nm$par[2])) %>% 
+      setNames(nm = c(parNames, "Log-Likelihood", "σ~bw~^2^", "σ~res~^2^")) %>% 
+      tibble::enframe(name = "Parameter", value = "NM"),
+    
+    y= c(fm_bo$par, -fm_bo$fval, exp(2*fm_bo$par[1]), exp(2*fm_bo$par[2])) %>% 
+      setNames(nm = c(parNames, "Log-Likelihood", "σ~bw~^2^", "σ~res~^2^")) %>% 
+      tibble::enframe(name = "Parameter", value = "bobyqa"),
+    
+    by = "Parameter"
+  ),
+  y=c(fm_bfgs$par, -fm_bfgs$fval, exp(2*fm_bfgs$par[1]), exp(2*fm_bfgs$par[2])) %>% 
+      setNames(nm = c(parNames, "Log-Likelihood", "σ~bw~^2^", "σ~res~^2^")) %>% 
+      tibble::enframe(name = "Parameter", value = "L-BFGS-B"),
+  
+  by = "Parameter"
+)
+
+```
+
+
+Neither optimization methods meet the `lme4`-fit, in particular `L-BFGS-B` is off-target
+and the other gradient-free methods deliver different estimates for the variance components.
+The `NM`-method comes closer to the `lme4`-fit than the `bobyqa`-method.
+Note that NM-method yields the biggest log-likelihood value (i.e. least negative),
+even bigger than the `lme4`-fit.
+
+
+We use the NM-fit for parameter θ and plug it into `lmer` to check the log-likelihood (if also `lme4` confirms this better log-likelihood).
+The NM-based estimate for scaled between-subject variability as standard deviation is 
+$\hat{θ}_{\text{NM}}=$ `r (theta_nm <- exp(fm_nm$par[1] - fm_nm$par[2]))`.
+
+```{r ex1_lmm_ranInt_sleepstudy2_lme4_w_start_from_cens, echo = TRUE}
+lmer( Reaction ~ Days + (1|Subject), data = sleepstudy2, REML = DO_REML,
+      start = theta_nm, control = lmerControl(optimizer=NULL)) %>% 
+  summary
+```
+The parameter fits returned by `lme4` are not identical to those of our censoring-aware implementation.
+Package `lme4` does not confirm our log-likelihood value but the log-likelihood is not changed compared to the `lme4`-fit which hints that the log-likelihood function is very flat in the neighbourhood of the MLE.
+
+
 

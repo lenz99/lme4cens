@@ -15,7 +15,7 @@ mkLmerDevfun_R(fr, X, reTrms, REML = TRUE, start = NULL, verbose = 0, ...)
 objective function which maps the covariance parameters \code{theta} to the corresponding (restricted) deviance
 }
 \description{
-This implements the objective function (deviance or restricted deviance).
+This re-implements the objective function (deviance or restricted deviance) in pure R.
 This is a test case to compare with the official lme4-implementation.
 ZZZ offset?
 }

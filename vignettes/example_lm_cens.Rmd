@@ -47,13 +47,13 @@ set.seed(123L)
 N <- 230L
 λ <- 1.8
 
-ex_exp_lCens <- data_frame_(list(
-  X = ~ rweibull(n = N, shape = 1L, scale = 1/λ),
+ex_exp_lCens <- tibble(
+  X = rweibull(n = N, shape = 1L, scale = 1/λ),
   # censoring with shorter mean time than for response X
-  Cl = ~ rweibull(n = N, shape = 1.2, scale = 1/λ-.3), 
-  T = ~ pmax(X, Cl),
-  status = ~ as.numeric(X >= Cl)
-))
+  Cl = rweibull(n = N, shape = 1.2, scale = 1/λ-.3), 
+  T = pmax(X, Cl),
+  status = as.numeric(X >= Cl)
+)
 ```
 
 

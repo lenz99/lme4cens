@@ -74,7 +74,8 @@ optimizeLmerCens <- function(devfun,
 #' optwrap for censored responses.
 #'
 #' Started as a copy of [lme4:::optwrap]
-#' but adapted to the censoring situation (e.g. optimization is for all parameters) and simplified the code (removed some options).
+#' but adapted to the censoring situation (e.g. optimization is for all parameters) and removed some options.
+#' @param optimizer specifies optimization method, either directly as function object or as function name (as character)
 #' @seealso [lme4::optwrap]
 optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
                         control = list(), calc.derivs = TRUE,
@@ -111,7 +112,8 @@ optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
   arglist <- list(
     # we drop the attributes of the return value of the function [needed for optimx]
     fn = function(param) as.vector(fn(param)),
-    par = par, lower = lower, upper = upper, control = control)
+    par = par, lower = lower, upper = upper, control = control
+  )
 
   ## optimx: must pass method in control (?) because 'method' was previously
   ## used in lme4 to specify REML vs ML

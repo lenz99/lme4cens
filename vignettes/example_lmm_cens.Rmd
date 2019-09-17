@@ -58,8 +58,8 @@ The mean value of the observations per time point are:
 
 ```{r sleepstudy2_desc, echo = VERBOSE > 0, results='asis'}
 sleepstudy2 %>%
-  dplyr::group_by_(~ Days) %>%
-  dplyr::summarise_(`mean~Reaction~` = ~ mean(Reaction3), `median~Reaction~` = ~ median(Reaction3)) %>% 
+  dplyr::group_by(Days) %>%
+  dplyr::summarise(`mean~Reaction~` = mean(Reaction3), `median~Reaction~` = median(Reaction3)) %>% 
   knitr::kable(digits = 0L)
 ```
 
