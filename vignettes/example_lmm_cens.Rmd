@@ -12,22 +12,23 @@ vignette: >
 
 ```{r setup, include=FALSE, message=FALSE}
 
-devtools::dev_mode(on = TRUE)
-
 library(dplyr)
 library(knitr)
 
 ## knitr package options
 knitr::opts_knit$set(verbose = FALSE)
-options(digits = 3L)
+options(digits = 5L)
 
 library(survival)
 
-library(lme4cens)
 library(microbenchmark)
 
 library(censReg)
 library(crch)
+
+devtools::dev_mode(on = TRUE)
+library(lme4cens)
+
 
 data("sleepstudy2", package = "lme4cens")
 
@@ -88,7 +89,13 @@ fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type 
                         data = sleepstudy2, REML = FALSE,
                         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0),
                         start = paramSL) 
-fm.lmercens
+summary(fm.lmercens)
+```
+
+We can request a confidence-interval for the fixed effect parameters. It is based on asymptotic ML-theory and uses the observed Fisher-information matrix to get an estimate of the standard errors for the parameters.
+
+```{r ex2_sleepstudy2_lme4cens_confint, echo = TRUE}
+confint(fm.lmercens, level = 0.95)
 ```
 
 

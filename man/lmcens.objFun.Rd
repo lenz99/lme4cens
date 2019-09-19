@@ -20,7 +20,7 @@ lmcens.objFun(x, yTime1, yTime2, yStat, w, offset)
 \item{offset}{offset vector, can be \code{NULL}}
 }
 \value{
-negative log-likelihood as objective function
+negative log-likelihood as objective function. Attribute \code{grad} contains the analytical gradient.
 }
 \description{
 Factory method to create the negative log-likelihood function. The

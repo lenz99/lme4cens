@@ -4,13 +4,13 @@
 \alias{lmercens.fit}
 \title{Internal lmercens-fitting routine.}
 \usage{
-lmercens.fit(lmod, start = NULL, verbose = 0L, control = lmerControl(),
-  devFunOnly)
+lmercens.fit(lmod, start = NULL, verbose = 0L,
+  control = lme4::lmerControl(), devFunOnly)
 }
 \arguments{
 \item{lmod}{the description of the model as prepared by \link[lme4:lFormula]{lme4::lFormula}}
 
-\item{start}{list of start values or NULL}
+\item{start}{list of start values with entries \code{theta} and \code{fixef}. Or NULL}
 
 \item{devFunOnly}{flag if we want to have only the deviance function}
 }

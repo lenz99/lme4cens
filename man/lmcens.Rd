@@ -5,11 +5,11 @@
 \title{Fit a linear model with censored observations.}
 \usage{
 lmcens(formula, data, subset, weights, contrasts = NULL, offset = NULL,
-  start = NULL, method = c("BFGS", "L-BFGS-B", "Nelder-Mead", "SANN", "CG"),
-  ...)
+  start = NULL, method = c("BFGS", "L-BFGS-B", "Nelder-Mead", "SANN",
+  "CG"), ...)
 }
 \arguments{
-\item{offset}{offset vector that is subtracted from the time variable (in
+\item{offset}{offset vector that is subtracted from the response variable (in
 case of interval-censoring both boundaries are adapted)}
 
 \item{start}{numeric vector of start parameters. If \code{NULL} use ordinary linear regression for start values}

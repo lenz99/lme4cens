@@ -4,8 +4,8 @@
 \alias{refit.lmercens}
 \title{Refit a lmercens model with a different response.}
 \usage{
-\method{refit}{lmercens}(object, newresp, control = NULL, devFunOnly = NULL,
-  start = NULL, verbose = NULL, ...)
+\method{refit}{lmercens}(object, newresp, control = NULL,
+  devFunOnly = NULL, start = NULL, verbose = NULL, ...)
 }
 \arguments{
 \item{newresp}{a \link[survival:Surv]{survival::Surv}-object carrying a censored response}

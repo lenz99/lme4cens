@@ -391,7 +391,7 @@ lmercens <- function(formula, data = NULL, REML, control = lme4::lmerControl(),
   ##lmod$formula <- NULL  #mkuhn, 20180215: keep it in lmod because I pass the complete lmod to lmercens.fit
 
   opt <- lmercens.fit(lmod, start = start, verbose = verbose, control = control, devFunOnly = devFunOnly)
-
+  ##names(opt$par) <- c("ln_SD_betw", "ln_SD_res", colnames(lmod$X)) ## name like `(Intercept)` leads to problem with numerical Hessian
 
   # return value -----
   if (isTRUE(devFunOnly)) return(opt)
@@ -400,10 +400,15 @@ lmercens <- function(formula, data = NULL, REML, control = lme4::lmerControl(),
   # mkMerMod(environment(devfun), opt, lmod$reTrms, fr = lmod$fr,
   #          mc = mcout, lme4conv = cc)
 
+
+  thetaParInd <- c(1L, 2L)
+
+  # Hessian matrix for negative log-likelihood
+  myHess <- estimHessian(opt, thetaParInd)
+
   # ZZZ for the time being, return own list with optimization information
-  ##opt
-  structure(  list(call = mcout, ingredients = lmod, par = opt$par, fixef = opt$par[-c(1L, 2L)],
-                   fval = opt$fval, hess = attr(opt, "derivs")[["hessian"]],
+  structure(  list(call = mcout, ingredients = lmod, par = opt$par, fixef = opt$par[-thetaParInd],
+                   fval = opt$fval, hess = myHess,
                    conv = opt$convergence, message = sprintf("call to %s w/ method %s. Resulting code: %d and msg: %s",
                                                              control$optimizer[1L], control$optCtrl[["method"]], opt$ierr, opt$msg),
                    ##"with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
@@ -411,6 +416,39 @@ lmercens <- function(formula, data = NULL, REML, control = lme4::lmerControl(),
               class = "lmercens"
   )
 }
+
+#' Estimate ('observed') Hessian matrix at MLE
+#' @param opt optimization result
+#' @return Hessian matrix at MLE for fixed-effect coefficients
+estimHessian <- function(opt, thetaParInd){
+
+  coef_theta <- opt$par[thetaParInd]
+  coef_fixef <- opt$par[-thetaParInd]
+
+  myHess <- attr(opt, "derivs")[["hessian"]]
+  # use numeric 2nd derivative at ('observed') MLE if not provided by optimization routine
+  if ( is.null(myHess)) {
+
+    negScoreFun <- attr(opt$devfun, "grad", exact = TRUE)
+    if (!is.null(negScoreFun) && is.function(negScoreFun)) {
+      # for numeric derivation I need individual parameters
+      #+I take only the fixef-coefficients and use the observed MLE for the theta parameters
+      negScoreFun2 <- function(){ negScoreFun(unlist(c(coef_theta, mget(x = names(coef_fixef))))) }
+      formals(negScoreFun2) <- as.list(coef_fixef) #set parameters of the function
+      myenv <- new.env() # evaluation environment
+      for (fpn in names(coef_fixef)) assign(fpn, as.numeric(coef_fixef[fpn]), envir = myenv)
+      myHess <- attr(stats::numericDeriv(str2lang(paste0("negScoreFun2(", paste(names(coef_fixef), collapse = ", "), ")")),
+                                         theta = names(coef_fixef), rho = myenv), which = "gradient", exact = TRUE)[-seq_along(coef_theta),]
+
+      # ensure symmetric matrix
+      myHess <- (myHess + t(myHess)) / 2L
+    }#fi negScoreFun
+  }#fi myHess
+
+  myHess
+}
+
+
 
 
 #' Refit a lmercens model with a different response.
@@ -441,9 +479,11 @@ refit.lmercens <- function(object, newresp, control = NULL, devFunOnly = NULL, s
   opt <- lmercens.fit(lmod, start = ostart, control = octrl, # complex arguments (i.e. with pre-processing in function lmercens) are stored in the object
                       devFunOnly = odevFunOnly, verbose = overbose)
 
+  thetaParInd <- c(1L, 2L)
+  myHess <- estimHessian(opt, thetaParInd)
   # return value -----
-  structure(  list(call = ocall, ingredients = lmod, par = opt$par, fixef = opt$par[-c(1L, 2L)],
-                   fval = opt$fval, hess = attr(opt, "derivs")[["hessian"]],
+  structure(  list(call = ocall, ingredients = lmod, par = opt$par, fixef = opt$par[-thetaParInd],
+                   fval = opt$fval, hess = myHess,
                    conv = opt$convergence, message = sprintf("call to %s w/ method %s. Resulting code: %d and msg: %s",
                                                              octrl$optimizer[1L], octrl$optCtrl[["method"]], opt$ierr, opt$message),
                    ##"with", paste(c("fn", "gr"), res_optim$counts, sep = ": ", collapse = " - "), "evaluations"),
@@ -457,7 +497,7 @@ refit.lmercens <- function(object, newresp, control = NULL, devFunOnly = NULL, s
 
 #' Internal lmercens-fitting routine.
 #' @param lmod the description of the model as prepared by [lme4::lFormula]
-#' @param start list of start values or NULL
+#' @param start list of start values with entries `theta` and `fixef`. Or NULL
 #' @param devFunOnly flag if we want to have only the deviance function
 #' @return result of optimization call (or deviance function)
 lmercens.fit <- function(lmod, start = NULL, verbose = 0L, control = lme4::lmerControl(), devFunOnly){
@@ -489,7 +529,7 @@ lmercens.fit <- function(lmod, start = NULL, verbose = 0L, control = lme4::lmerC
   opt <- if (length(control$optimizer) == 0L) {
     #stop("start values are required if no optimization")
     #s <- getStart(start, environment(devfun)$lower, environment(devfun)$pp)
-    list(par = start, fixef = start[1L:p], fval = devfun(start), conv = 1000, message = "no optimization", negLogLikFun = devfun)
+    list(par = start, fixef = start[["fixef"]], fval = devfun(start), conv = 1000, message = "no optimization", negLogLikFun = devfun)
   } else {
     # delegate optimization
     optimizeLmerCens(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,

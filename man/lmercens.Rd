@@ -4,7 +4,7 @@
 \alias{lmercens}
 \title{Simple random intercept mixed models with censored response.}
 \usage{
-lmercens(formula, data = NULL, REML, control = lmerControl(),
+lmercens(formula, data = NULL, REML, control = lme4::lmerControl(),
   start = NULL, verbose = 0L, subset, weights, na.action, offset,
   contrasts = NULL, devFunOnly = FALSE, ...)
 }
