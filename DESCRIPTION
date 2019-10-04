@@ -1,7 +1,7 @@
 Package: lme4cens
 Type: Package
 Title: Linear Mixed Effect Models for Censored Data
-Version: 0.1.6
+Version: 0.1.7
 Author: Matthias Kuhn
 Maintainer: Matthias Kuhn <matthias.kuhn@tu-dresden.de>
 Description: Linear Mixed Effect Models that cope with censored data.

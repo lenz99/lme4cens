@@ -31,7 +31,7 @@ print.lmercens <- function(obj){
       "\n\n", sep = "")
   cat("\nCoefficients:\nFixed coefs: ", fixef.lmercens(obj))
   cat("\nRandom effect coefs: log(S_betw) = ", log(sigma(obj, which = "between")),
-      "\t log(S_within) = ", log(sigma(obj, which = "residual")))
+      "\t log(S_within) = ", log(sigma(obj, which = "residual"), "\n"))
 }
 
 #' Extract variance estimates on standard-deviation scale

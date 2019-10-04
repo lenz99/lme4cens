@@ -457,6 +457,7 @@ estimHessian <- function(opt, thetaParInd){
 #'
 #' @param newresp a \code{\link[survival]{Surv}}-object carrying a censored response
 #' @return a lmercens-object from the new censored respone variable
+#' @export
 refit.lmercens <- function(object, newresp, control = NULL, devFunOnly = NULL, start = NULL, verbose = NULL, ...){
   octrl <- if (! is.null(control)) control else object$control
   ostart <- if (! is.null(start)) start else object$start
