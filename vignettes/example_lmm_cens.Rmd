@@ -84,7 +84,7 @@ The model fit is:
 
 ```{r ex2_sleepstudy2_lme4cens1, echo = TRUE}
 # attach package optimx in order to use it in lme4
-library(optimx)
+##library(optimx)
 fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
                         data = sleepstudy2, REML = FALSE,
                         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0),

@@ -69,6 +69,31 @@ optimizeLmerCens <- function(devfun,
 
 
 
+#' @title Get the optimizer function and check it minimally
+#' Internal utility, only used in [optwrapCens]
+#' @param optimizer character string ( = function name) *or* function
+#' @return optimizer function
+#' @seealso [lme4::optwrap]
+getOptfun <- function(optimizer) {
+  if (((is.character(optimizer) && optimizer == "optimx") ||
+       deparse(substitute(optimizer)) == "optimx")) {
+    if (!requireNamespace("optimx")) {
+      stop(shQuote("optimx")," package must be installed order to ",
+           "use ",shQuote('optimizer="optimx"'))
+    }
+    optfun <- optimx::optimx
+  } else if (is.character(optimizer)) {
+    optfun <- tryCatch(get(optimizer), error = function(e) NULL)
+  } else optfun <- optimizer
+  if (is.null(optfun)) stop("couldn't find optimizer function ",optimizer)
+  if (!is.function(optfun)) stop("non-function specified as optimizer")
+  needArgs <- c("fn","par","lower","control")
+  if (anyNA(match(needArgs, names(formals(optfun)))))
+    stop("optimizer function must use (at least) formal parameters ",
+         paste(sQuote(needArgs), collapse = ", "))
+  optfun
+}
+
 
 
 #' optwrap for censored responses.
@@ -85,8 +110,8 @@ optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
 
   ## control must be specified if adj==TRUE;
   ##  otherwise this is a fairly simple wrapper
-  optfun <- lme4:::getOptfun(optimizer)
-  optName <- if(is.character(optimizer)) optimizer
+  optfun <- getOptfun(optimizer)
+  optName <- if (is.character(optimizer)) optimizer
   else ## "good try":
     deparse(substitute(optimizer))[[1L]]
 
@@ -96,8 +121,8 @@ optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
 
   switch(optName,
          "bobyqa" = {
-           if(all(par == 0)) par[] <- 0.001  ## minor kludge
-           if(!is.numeric(control$iprint)) control$iprint <- min(verbose, 3L)
+           if (all(par == 0)) par[] <- 0.001  ## minor kludge
+           if (!is.numeric(control$iprint)) control$iprint <- min(verbose, 3L)
          },
          "Nelder_Mead" = control$verbose <- verbose,
          "nloptwrap" = control$print_level <- min(as.numeric(verbose),3L),
