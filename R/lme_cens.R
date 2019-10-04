@@ -338,8 +338,8 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
 
 #' Simple random intercept mixed models with censored response.
 #'
-#' This function is modelled like the main function [lme4::lmer].
-#' @param control list-like control object of class `lmerControl`
+#' This function is modelled like the main function \code{\link[lme4]{lmer}}.
+#' @param control list-like control object of class \code{\link[lme4]{lmerControl}}
 #' @return lmercens object
 #' @export
 lmercens <- function(formula, data = NULL, REML, control = lme4::lmerControl(),
@@ -453,9 +453,9 @@ estimHessian <- function(opt, thetaParInd){
 
 #' Refit a lmercens model with a different response.
 #'
-#' Basically, open up the existing lmercens-fit and inject the new response and call [lmercens] again.
+#' Basically, open up the existing lmercens-fit and inject the new response and call \code{\link{lmercens}} again.
 #'
-#' @param newresp a [survival::Surv]-object carrying a censored response
+#' @param newresp a \code{\link[survival]{Surv}}-object carrying a censored response
 #' @return a lmercens-object from the new censored respone variable
 refit.lmercens <- function(object, newresp, control = NULL, devFunOnly = NULL, start = NULL, verbose = NULL, ...){
   octrl <- if (! is.null(control)) control else object$control
@@ -496,8 +496,9 @@ refit.lmercens <- function(object, newresp, control = NULL, devFunOnly = NULL, s
 
 
 #' Internal lmercens-fitting routine.
-#' @param lmod the description of the model as prepared by [lme4::lFormula]
+#' @param lmod the description of the model as prepared by \code{\link[lme4]{lFormula}}
 #' @param start list of start values with entries `theta` and `fixef`. Or NULL
+#' @param control a list that carries control-settings for the optimization, see \code{\link[lme4]{lmerControl}}
 #' @param devFunOnly flag if we want to have only the deviance function
 #' @return result of optimization call (or deviance function)
 lmercens.fit <- function(lmod, start = NULL, verbose = 0L, control = lme4::lmerControl(), devFunOnly){

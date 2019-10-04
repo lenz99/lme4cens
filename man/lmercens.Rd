@@ -9,11 +9,11 @@ lmercens(formula, data = NULL, REML, control = lme4::lmerControl(),
   contrasts = NULL, devFunOnly = FALSE, ...)
 }
 \arguments{
-\item{control}{list-like control object of class \code{lmerControl}}
+\item{control}{list-like control object of class \code{\link[lme4]{lmerControl}}}
 }
 \value{
 lmercens object
 }
 \description{
-This function is modelled like the main function \link[lme4:lmer]{lme4::lmer}.
+This function is modelled like the main function \code{\link[lme4]{lmer}}.
 }

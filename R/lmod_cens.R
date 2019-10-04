@@ -154,15 +154,16 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
 
 
   # weights -----
-  weighting <- ! missing(w) && ! is.null(w)
+  weighting <- ! missing(w) && ! is.null(w) && is.numeric(w)
   if ( weighting ){
     if (any(w < 0 | is.na(w))) stop("missing or negative weights not allowed")
+    # normalize: sum of weights is n
+    w <- w/sum(w) * n
 
   } else {
     w <- rep(1L, n)
   }
-  # normalize weights to sum to n
-  w <- w/sum(w) * n
+
   stopifnot( length(w) == n )
 
 

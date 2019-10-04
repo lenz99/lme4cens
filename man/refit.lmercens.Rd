@@ -8,11 +8,11 @@
   devFunOnly = NULL, start = NULL, verbose = NULL, ...)
 }
 \arguments{
-\item{newresp}{a \link[survival:Surv]{survival::Surv}-object carrying a censored response}
+\item{newresp}{a \code{\link[survival]{Surv}}-object carrying a censored response}
 }
 \value{
 a lmercens-object from the new censored respone variable
 }
 \description{
-Basically, open up the existing lmercens-fit and inject the new response and call \link{lmercens} again.
+Basically, open up the existing lmercens-fit and inject the new response and call \code{\link{lmercens}} again.
 }

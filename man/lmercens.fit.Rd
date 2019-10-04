@@ -8,9 +8,11 @@ lmercens.fit(lmod, start = NULL, verbose = 0L,
   control = lme4::lmerControl(), devFunOnly)
 }
 \arguments{
-\item{lmod}{the description of the model as prepared by \link[lme4:lFormula]{lme4::lFormula}}
+\item{lmod}{the description of the model as prepared by \code{\link[lme4]{lFormula}}}
 
 \item{start}{list of start values with entries \code{theta} and \code{fixef}. Or NULL}
+
+\item{control}{a list that carries control-settings for the optimization, see \code{\link[lme4]{lmerControl}}}
 
 \item{devFunOnly}{flag if we want to have only the deviance function}
 }
