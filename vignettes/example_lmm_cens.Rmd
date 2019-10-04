@@ -26,7 +26,7 @@ library(microbenchmark)
 library(censReg)
 library(crch)
 
-devtools::dev_mode(on = TRUE)
+#devtools::dev_mode(on = TRUE)
 library(lme4cens)
 
 
@@ -83,8 +83,6 @@ The model fit is:
 <!-- # numDeriv::grad(func = devFun, x = unlist(paramSL)) -->
 
 ```{r ex2_sleepstudy2_lme4cens1, echo = TRUE}
-# attach package optimx in order to use it in lme4
-##library(optimx)
 fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
                         data = sleepstudy2, REML = FALSE,
                         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0),
@@ -105,7 +103,8 @@ If we omit the start values `lmercens` will first do a call to `lmer` where the 
 ```{r ex2_sleepstudy2_lme4cens2, echo = VERBOSE > 0}
 lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
          data = sleepstudy2, REML = FALSE,
-         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0))
+         control = lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B"), boundary.tol = 0)) %>% 
+  summary
 ```
 
 The result (at least for the intercept term) depends on the start values. Is there a local minimum where we are stuck in the optimization?
