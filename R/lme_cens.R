@@ -2,7 +2,7 @@
 #' Factory for objective function closures for simple LMER-models with censored response.
 #'
 #' This implements the objective function -- i.e. the negative log-likelihood -- for simple scalar random effect models with censoring.
-#' It is implemented in R. The variance parameter and the fixed effect parameter is not profiled out of the log-likelihood
+#' It is implemented in R. The variance parameters and the fixed effect parameter are not profiled out of the log-likelihood
 #' because of the censoring.
 #' The variance parameters are on log-scale (as to avoid a constrained optimization that variances are non-negative).
 #' It uses ML, REML currently not implemented.
@@ -76,7 +76,7 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
 
 
   # pp quick & start values -----
-  lower <- rep(-Inf, p+2L)
+  lower <- rep(-Inf, 2L)  ## was: p+2L, but it is applied only to the variance parameters later in `optimizeLmerCens`
   pp <- list()
 
 
