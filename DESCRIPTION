@@ -1,7 +1,7 @@
 Package: lme4cens
 Type: Package
 Title: Linear Mixed Effect Models for Censored Data
-Version: 0.1.8
+Version: 0.1.9
 Author: Matthias Kuhn
 Maintainer: Matthias Kuhn <matthias.kuhn@tu-dresden.de>
 Description: Linear Mixed Effect Models that cope with censored data.
@@ -14,7 +14,7 @@ Imports:
     optimx,
     parallel,
     survival
-Depends: lme4 (>= 1.1.12)
+Depends: R (>= 3.6.0), lme4 (>= 1.1.12)
 Suggests:
     knitr,
     rmarkdown,
