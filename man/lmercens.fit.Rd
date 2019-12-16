@@ -4,8 +4,13 @@
 \alias{lmercens.fit}
 \title{Internal lmercens-fitting routine.}
 \usage{
-lmercens.fit(lmod, start = NULL, verbose = 0L,
-  control = lme4::lmerControl(), devFunOnly)
+lmercens.fit(
+  lmod,
+  start = NULL,
+  verbose = 0L,
+  control = lme4::lmerControl(),
+  devFunOnly
+)
 }
 \arguments{
 \item{lmod}{the description of the model as prepared by \code{\link[lme4]{lFormula}}}

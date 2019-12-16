@@ -3,7 +3,6 @@
 \docType{package}
 \name{lme4cens}
 \alias{lme4cens}
-\alias{lme4cens-package}
 \title{Simple Linear Mixed Effect models that cope with censored data.
 It uses the formula interface of \code{lme4}-package. As a response variable you can use \code{Surv}-objects from the \code{survival} package.}
 \description{

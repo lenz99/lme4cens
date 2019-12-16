@@ -340,9 +340,10 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
 #'
 #' This function is modelled like the main function \code{\link[lme4]{lmer}}.
 #' @param control list-like control object of class \code{\link[lme4]{lmerControl}}. Defaults to use \code{optimx}'s BFGS optimizer.
+#' @param REML logical flag if restricted maximum likelihood is used for fitting. Defaults to `FALSE` (as REML is currently not implemented!)
 #' @return lmercens object
 #' @export
-lmercens <- function(formula, data = NULL, REML, control = lme4::lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B")),
+lmercens <- function(formula, data = NULL, REML = FALSE, control = lme4::lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B")),
                       start = NULL, verbose = 0L, subset, weights, na.action, offset,
                       contrasts = NULL, devFunOnly = FALSE, ...)   {
 

@@ -40,9 +40,9 @@ print.lmercens <- function(obj){
 sigma.lmercens <- function(obj, which = c("residual", "between"), ...){
   which <- match.arg(which)
 
-  switch (which,
-          between= exp(obj$par[1L]),
-          residual=,
+  switch(which,
+          between  = exp(obj$par[1L]),
+          residual = ,
           exp(obj$par[2L])
   )
 }
@@ -52,6 +52,58 @@ sigma.lmercens <- function(obj, which = c("residual", "between"), ...){
 fixef.lmercens <- function(obj){
   setNames(obj$fixef, nm = colnames(obj$ingredients$X))
 }
+
+#' Random effect predictions for the random intercept.
+#' @export
+ranef.lmercens <- function(obj){
+  stopifnot( inherits(obj, what = "lmercens") )
+
+  # use only observed cases
+  respMatrix <- as.matrix(obj$ingredients$fr[[1L]])
+  obsInd <- respMatrix[,3L, drop=TRUE] == 1L  ## eventually could use also interval-censored (=> take mean of interval)
+  fixef_resids <-  respMatrix[obsInd, 1L, drop=FALSE] - obj$ingredients$X[obsInd,] %*% fixef(obj)
+
+  # cf. Demidenko, section 3.7
+  Zt <- obj$ingredients$reTrms$Zt
+  D <- diag(exp(2 * (obj$par[[1L]] - obj$par[[2L]])), nrow = NROW(Zt))
+
+  # with random intercept only, it is enough to give out a vector (not a named list)
+  setNames(as.numeric(D %*% Matrix::solve(a = diag(1, nrow = NROW(Zt)) + Matrix::tcrossprod(Zt) %*% D,
+                                          b = Zt[, obsInd] %*% (fixef_resids))),
+           nm = levels(obj$ingredients$reTrms$flist[[1]]))
+}
+
+#' Predict method for `lmercens` objects.
+#'
+#' @param obj `lmercens` model object
+#' @param newdata dataframe with covariate values for prediction. Default is `NULL` which is to fall back to the training data.
+#' @param re.form right-side formula for random effects to condition on in case of prediction on training data. If `NULL`, include all random effects; if `~0` or `NA`, include no random effects.
+#' @export
+predict.lmercens <- function(obj, newdata = NULL, re.form = NULL){
+  stopifnot( inherits(obj, what = "lmercens") )
+
+  ret <- NULL
+
+  if ( is.null(newdata) ){ # use training data itself for predictions
+    #newdata <- obj$ingredients$fr
+
+    ret <- obj$ingredients$X %*% fixef(obj)
+
+    if ( is.null(re.form) || re.form == ~1 ){ ##!isTRUE(is.na(re.form)) && !re.form == ~0 ){
+      # expect simple random effects model (only a single random intercept)
+      stopifnot( length(obj$ingredients$reTrms$cnms) == 1L && obj$ingredients$reTrms$cnms[[1L]] == '(Intercept)' )
+
+      ret <- ret + Matrix::crossprod(obj$ingredients$reTrms$Zt, y = ranef(obj))
+    }
+
+  } else { # new data used without random effect BLUPs
+    X <- model.matrix(lme4:::getFixedFormula(obj$call$formula[-2]), data = newdata[,-1])
+    ret <- X %*% fixef(obj)
+  }
+
+  as.vector(ret)
+}
+
 
 #' @export
 summary.lmercens <- function(obj){

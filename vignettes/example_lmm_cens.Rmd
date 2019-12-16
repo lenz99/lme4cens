@@ -75,13 +75,6 @@ Start values — stored in the list `paramSL` — are:
 
 The model fit is: 
 
-<!-- # devFun <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject), -->
-<!-- #                         data = sleepstudy2, REML = FALSE, devFunOnly = TRUE) -->
-<!-- # devFunGrad <- attr(devFun, "grad") -->
-<!-- # devFun(param = unlist(paramSL)) -->
-<!-- # devFunGrad(paramVect = unlist(paramSL)) -->
-<!-- # numDeriv::grad(func = devFun, x = unlist(paramSL)) -->
-
 ```{r ex2_sleepstudy2_lme4cens1, echo = TRUE}
 fm.lmercens <- lmercens(Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + (1|Subject),
                         data = sleepstudy2, REML = FALSE,
@@ -94,6 +87,18 @@ We can request a confidence-interval for the fixed effect parameters. It is base
 
 ```{r ex2_sleepstudy2_lme4cens_confint, echo = TRUE}
 confint(fm.lmercens, level = 0.95)
+```
+
+The predictions for the random effects is extracted via `ranef` (like in the `lme4` package):
+```{r ex2_sleepstudy2_lme4cens_ranef, echo = TRUE}
+ranef(fm.lmercens)
+```
+
+Model predictions can be made on the training data either with or without the random effect predictions:
+```{r ex2_sleepstudy2_lme4cens_predict, echo = TRUE}
+cbind(get_all_vars(fm.lmercens, data = sleepstudy2),
+      pred_wRanEff = predict(fm.lmercens),
+      pred_fixedOnly = predict(fm.lmercens, re.form = ~0))
 ```
 
 

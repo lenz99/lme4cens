@@ -4,10 +4,16 @@
 \alias{optimizeLmerCens}
 \title{Optimization function for linear mixed models with censoring.}
 \usage{
-optimizeLmerCens(devfun, optimizer = formals(lmerControl)$optimizer,
+optimizeLmerCens(
+  devfun,
+  optimizer = formals(lmerControl)$optimizer,
   restart_edge = formals(lmerControl)$restart_edge,
-  boundary.tol = formals(lmerControl)$boundary.tol, start = NULL,
-  verbose = 0L, control = list(), ...)
+  boundary.tol = formals(lmerControl)$boundary.tol,
+  start = NULL,
+  verbose = 0L,
+  control = list(),
+  ...
+)
 }
 \arguments{
 \item{devfun}{a deviance function}

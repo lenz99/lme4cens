@@ -4,9 +4,17 @@
 \alias{lmcens}
 \title{Fit a linear model with censored observations.}
 \usage{
-lmcens(formula, data, subset, weights, contrasts = NULL, offset = NULL,
-  start = NULL, method = c("BFGS", "L-BFGS-B", "Nelder-Mead", "SANN",
-  "CG"), ...)
+lmcens(
+  formula,
+  data,
+  subset,
+  weights,
+  contrasts = NULL,
+  offset = NULL,
+  start = NULL,
+  method = c("BFGS", "L-BFGS-B", "Nelder-Mead", "SANN", "CG"),
+  ...
+)
 }
 \arguments{
 \item{offset}{offset vector that is subtracted from the response variable (in

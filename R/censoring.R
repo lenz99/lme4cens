@@ -35,7 +35,7 @@ prepSurvResp <- function(y0) {
 
 
 #' Get a quick approximation for a flat response vector from the [survival::Surv]-response.
-#' It is useful to get sensible start-values using ordinary regression.
+#' It is useful to get rough start-values using ordinary regression.
 #' @return flattened numeric response vector
 flattenResponse <- function(yTime1, yTime2, yStat) {
   flat_y <- yTime1

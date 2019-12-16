@@ -4,8 +4,7 @@
 \alias{mkLmerDevfun_R}
 \title{Objective function for LMER-models implemented in R.}
 \usage{
-mkLmerDevfun_R(fr, X, reTrms, REML = TRUE, start = NULL, verbose = 0,
-  ...)
+mkLmerDevfun_R(fr, X, reTrms, REML = TRUE, start = NULL, verbose = 0, ...)
 }
 \arguments{
 \item{fr}{dataframe with response variable in its first column}

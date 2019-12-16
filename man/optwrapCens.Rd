@@ -4,8 +4,16 @@
 \alias{optwrapCens}
 \title{optwrap for censored responses.}
 \usage{
-optwrapCens(optimizer, fn, par, lower = -Inf, upper = Inf,
-  control = list(), calc.derivs = TRUE, verbose = 0L)
+optwrapCens(
+  optimizer,
+  fn,
+  par,
+  lower = -Inf,
+  upper = Inf,
+  control = list(),
+  calc.derivs = TRUE,
+  verbose = 0L
+)
 }
 \arguments{
 \item{optimizer}{specifies optimization method, either directly as function object or as function name (as character)}

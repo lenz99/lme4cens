@@ -3,7 +3,7 @@
 \name{flattenResponse}
 \alias{flattenResponse}
 \title{Get a quick approximation for a flat response vector from the \link[survival:Surv]{survival::Surv}-response.
-It is useful to get sensible start-values using ordinary regression.}
+It is useful to get rough start-values using ordinary regression.}
 \usage{
 flattenResponse(yTime1, yTime2, yStat)
 }
@@ -12,5 +12,5 @@ flattened numeric response vector
 }
 \description{
 Get a quick approximation for a flat response vector from the \link[survival:Surv]{survival::Surv}-response.
-It is useful to get sensible start-values using ordinary regression.
+It is useful to get rough start-values using ordinary regression.
 }

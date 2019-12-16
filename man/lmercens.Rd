@@ -4,12 +4,25 @@
 \alias{lmercens}
 \title{Simple random intercept mixed models with censored response.}
 \usage{
-lmercens(formula, data = NULL, REML,
-  control = lme4::lmerControl(optimizer = "optimx", optCtrl = list(method
-  = "L-BFGS-B")), start = NULL, verbose = 0L, subset, weights,
-  na.action, offset, contrasts = NULL, devFunOnly = FALSE, ...)
+lmercens(
+  formula,
+  data = NULL,
+  REML = FALSE,
+  control = lme4::lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B")),
+  start = NULL,
+  verbose = 0L,
+  subset,
+  weights,
+  na.action,
+  offset,
+  contrasts = NULL,
+  devFunOnly = FALSE,
+  ...
+)
 }
 \arguments{
+\item{REML}{logical flag if restricted maximum likelihood is used for fitting. Defaults to \code{FALSE} (as REML is currently not implemented!)}
+
 \item{control}{list-like control object of class \code{\link[lme4]{lmerControl}}. Defaults to use \code{optimx}'s BFGS optimizer.}
 }
 \value{
