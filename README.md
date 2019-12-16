@@ -1,4 +1,4 @@
-# lme4cens: Simple Mixed Effect Models and Censoring
+# lme4cens: Simple Linear Mixed Effect Models and Censoring
 
 The *R*-package **lme4cens** builds on **lme4** to fit simple random effects models with a censored response.
 It re-uses the formula-module from **lme4** to facilitate model specification.
