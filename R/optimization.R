@@ -22,7 +22,7 @@ optimizeLmerCens <- function(devfun,
 
   opt <- optwrapCens(optimizer,
                      devfun,
-                     lme4:::getStart(start, lower=rho$lower, pred=rho$pp, returnVal = "all"),
+                     lme4:::getStart(start, pred=rho$pp, returnVal = "all"),
                      lower=rho$lower,
                      control=control,
                      verbose=verbose,
