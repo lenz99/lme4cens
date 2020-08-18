@@ -4,7 +4,9 @@
 \name{sleepstudy}
 \alias{sleepstudy}
 \title{Sleepstudy data with additional censoring information (event2).}
-\format{An object of class \code{data.frame} with 180 rows and 6 columns.}
+\format{
+An object of class \code{data.frame} with 180 rows and 6 columns.
+}
 \source{
 lme4 package
 }

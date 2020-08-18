@@ -5,7 +5,9 @@
 \alias{sleepstudy2}
 \title{Subset of \code{sleepstudy} data with only four patients,
 including possible censoring information (\code{event2} and \code{event3}).}
-\format{An object of class \code{data.frame} with 40 rows and 6 columns.}
+\format{
+An object of class \code{data.frame} with 40 rows and 6 columns.
+}
 \source{
 \code{lme4} package
 }

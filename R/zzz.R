@@ -41,9 +41,9 @@ sigma.lmercens <- function(obj, which = c("residual", "between"), ...){
   which <- match.arg(which)
 
   switch(which,
-          between  = exp(obj$par[1L]),
+          between  = exp(obj$par[[1L]]),
           residual = ,
-          exp(obj$par[2L])
+          exp(obj$par[[2L]])
   )
 }
 
@@ -60,7 +60,8 @@ ranef.lmercens <- function(obj){
 
   # use only observed cases
   respMatrix <- as.matrix(obj$ingredients$fr[[1L]])
-  obsInd <- respMatrix[,3L, drop=TRUE] == 1L  ## eventually could use also interval-censored (=> take mean of interval)
+  stopifnot( "status" %in% colnames(respMatrix) )
+  obsInd <- respMatrix[,"status", drop=TRUE] == 1L  ## eventually could use also interval-censored (=> take mean of interval)
   fixef_resids <-  respMatrix[obsInd, 1L, drop=FALSE] - obj$ingredients$X[obsInd,] %*% fixef(obj)
 
   # cf. Demidenko, section 3.7
@@ -85,7 +86,6 @@ predict.lmercens <- function(obj, newdata = NULL, re.form = NULL){
   ret <- NULL
 
   if ( is.null(newdata) ){ # use training data itself for predictions
-    #newdata <- obj$ingredients$fr
 
     ret <- obj$ingredients$X %*% fixef(obj)
 
@@ -104,6 +104,22 @@ predict.lmercens <- function(obj, newdata = NULL, re.form = NULL){
   as.vector(ret)
 }
 
+
+#' @export
+residuals.lmercens <- function(obj){
+  stopifnot( inherits(obj, what = "lmercens") )
+
+  y_pred <- predict(obj)
+  y_obs  <- as.matrix(obj$ingredients$fr[[1L]])
+  y_obs_status <- y_obs[, "status"]
+
+  # NA as default (for all censored outcomes)
+  res <- rep(NA_real_, NROW(y_obs))
+  # res as obs - pred for observed outcomes (i.e. no censorings)
+  res[y_obs_status == 1L] <- y_obs[y_obs_status == 1L, 1L] - y_pred[y_obs_status == 1L]
+
+  res
+}
 
 #' @export
 summary.lmercens <- function(obj){
@@ -140,7 +156,7 @@ print.summary.lmercens <- function(obj, ...) {
 
 #' Variance-covariance matrix for fixed effect coefficients.
 #' It uses the observed Fisher information matrix at the ML parameter estimate.
-#' Therefore, it is only asymptotically usefule.
+#' Therefore, it is only useful asymptotically.
 #' @param obj a fitted `lmercens`-object
 #' @return estimated variance-covariance matrix for fixed effect coefficients
 #' @export

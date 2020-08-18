@@ -8,7 +8,8 @@ lmercens(
   formula,
   data = NULL,
   REML = FALSE,
-  control = lme4::lmerControl(optimizer = "optimx", optCtrl = list(method = "L-BFGS-B")),
+  control = lme4::lmerControl(optimizer = "optimx", optCtrl = list(method =
+    "L-BFGS-B")),
   start = NULL,
   verbose = 0L,
   subset,
@@ -29,5 +30,5 @@ lmercens(
 lmercens object
 }
 \description{
-This function is modelled like the main function \code{\link[lme4]{lmer}}.
+This function is modeled like the main function \code{\link[lme4]{lmer}}.
 }

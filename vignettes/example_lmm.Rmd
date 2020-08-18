@@ -286,9 +286,11 @@ startL <- list(theta = c(3, 2), fixef = c(260, 5))
 fm_nm <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML,
          start = startL, control = lmerControl(optimizer = "Nelder_Mead"))
 
+# mkuhn, 2020-08-18: bobyqa has wrong formals x0 iso par
 # Gauss-Hermite quadrature with bobyqa optimizer
-fm_bo <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML,
-         start = startL, control = lmerControl(optimizer = "bobyqa"))
+# library(nloptr)
+# fm_bo <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy2, REML=DO_REML,
+#          start = startL, control = lmerControl(optimizer = "bobyqa"))
 
 # Gauss-Hermite quadrature with BFGS
 fm_bfgs <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy, REML=DO_REML,
@@ -296,18 +298,18 @@ fm_bfgs <- lmercens(Surv(Reaction) ~ Days + (1|Subject), data = sleepstudy, REML
 
 
 # display results
+#dplyr::inner_join(x=
 dplyr::inner_join(
-  x=dplyr::inner_join(
     x= c(fm_nm$par, -fm_nm$fval, exp(2*fm_nm$par[1]), exp(2*fm_nm$par[2])) %>% 
       setNames(nm = c(parNames, "Log-Likelihood", "σ~bw~^2^", "σ~res~^2^")) %>% 
       tibble::enframe(name = "Parameter", value = "NM"),
     
-    y= c(fm_bo$par, -fm_bo$fval, exp(2*fm_bo$par[1]), exp(2*fm_bo$par[2])) %>% 
-      setNames(nm = c(parNames, "Log-Likelihood", "σ~bw~^2^", "σ~res~^2^")) %>% 
-      tibble::enframe(name = "Parameter", value = "bobyqa"),
-    
-    by = "Parameter"
-  ),
+  #   y= c(fm_bo$par, -fm_bo$fval, exp(2*fm_bo$par[1]), exp(2*fm_bo$par[2])) %>% 
+  #     setNames(nm = c(parNames, "Log-Likelihood", "σ~bw~^2^", "σ~res~^2^")) %>% 
+  #     tibble::enframe(name = "Parameter", value = "bobyqa"),
+  #   
+  #   by = "Parameter"
+  # ),
   y=c(fm_bfgs$par, -fm_bfgs$fval, exp(2*fm_bfgs$par[1]), exp(2*fm_bfgs$par[2])) %>% 
       setNames(nm = c(parNames, "Log-Likelihood", "σ~bw~^2^", "σ~res~^2^")) %>% 
       tibble::enframe(name = "Parameter", value = "L-BFGS-B"),

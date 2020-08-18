@@ -4,7 +4,7 @@
 \alias{vcov.lmercens}
 \title{Variance-covariance matrix for fixed effect coefficients.
 It uses the observed Fisher information matrix at the ML parameter estimate.
-Therefore, it is only asymptotically usefule.}
+Therefore, it is only useful asymptotically.}
 \usage{
 \method{vcov}{lmercens}(obj, ...)
 }
@@ -17,5 +17,5 @@ estimated variance-covariance matrix for fixed effect coefficients
 \description{
 Variance-covariance matrix for fixed effect coefficients.
 It uses the observed Fisher information matrix at the ML parameter estimate.
-Therefore, it is only asymptotically usefule.
+Therefore, it is only useful asymptotically.
 }

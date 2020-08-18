@@ -338,7 +338,7 @@ mkLmerCensDevfun_rInt_R <- function(fr, X, reTrms, REML = FALSE, verbose = 0, co
 
 #' Simple random intercept mixed models with censored response.
 #'
-#' This function is modelled like the main function \code{\link[lme4]{lmer}}.
+#' This function is modeled like the main function \code{\link[lme4]{lmer}}.
 #' @param control list-like control object of class \code{\link[lme4]{lmerControl}}. Defaults to use \code{optimx}'s BFGS optimizer.
 #' @param REML logical flag if restricted maximum likelihood is used for fitting. Defaults to `FALSE` (as REML is currently not implemented!)
 #' @return lmercens object
@@ -426,7 +426,14 @@ estimHessian <- function(opt, thetaParInd){
   coef_theta <- opt$par[thetaParInd]
   coef_fixef <- opt$par[-thetaParInd]
 
-  myHess <- attr(opt, "derivs")[["hessian"]]
+  # ensure that we have named vector for fixef effect coefficients
+  if ( is.null(names(coef_fixef)) ){
+    coef_fixef <- stats::setNames(coef_fixef, paste0("b", nm = seq_along(coef_fixef)-1L))
+  }
+
+  optderivs <- attr(opt, "derivs")
+  # case-insensitive matching for Hessian-component
+  myHess <- unlist(optderivs[grepl("[hH]ess", names(optderivs))])
   # use numeric 2nd derivative at ('observed') MLE if not provided by optimization routine
   if ( is.null(myHess)) {
 

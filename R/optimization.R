@@ -69,22 +69,24 @@ optimizeLmerCens <- function(devfun,
 
 
 
-#' @title Get the optimizer function and check it minimally
+#' @title Get the optimizer function and perform minimal checks
 #' Internal utility, only used in [optwrapCens]
 #' @param optimizer character string ( = function name) *or* function
 #' @return optimizer function
 #' @seealso [lme4::optwrap]
 getOptfun <- function(optimizer) {
-  if (((is.character(optimizer) && optimizer == "optimx") ||
-       deparse(substitute(optimizer)) == "optimx")) {
-    if (!requireNamespace("optimx")) {
-      stop(shQuote("optimx")," package must be installed order to ",
-           "use ",shQuote('optimizer="optimx"'))
-    }
-    optfun <- optimx::optimx
-  } else if (is.character(optimizer)) {
-    optfun <- tryCatch(get(optimizer), error = function(e) NULL)
-  } else optfun <- optimizer
+  optfun <-
+    if (((is.character(optimizer) && optimizer == "optimx") ||
+         deparse(substitute(optimizer)) == "optimx")) {
+      if (!requireNamespace("optimx")) {
+        stop(shQuote("optimx")," package must be installed order to ",
+             "use ",shQuote('optimizer="optimx"'))
+      }
+      optimx::optimx
+    } else if (is.character(optimizer)) {
+      tryCatch(get(optimizer), error = function(e) NULL)
+    } else optimizer
+
   if (is.null(optfun)) stop("couldn't find optimizer function ",optimizer)
   if (!is.function(optfun)) stop("non-function specified as optimizer")
   needArgs <- c("fn","par","lower","control")

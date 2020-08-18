@@ -2,7 +2,7 @@
 % Please edit documentation in R/optimization.R
 \name{getOptfun}
 \alias{getOptfun}
-\title{Get the optimizer function and check it minimally
+\title{Get the optimizer function and perform minimal checks
 Internal utility, only used in \link{optwrapCens}}
 \usage{
 getOptfun(optimizer)
@@ -14,7 +14,7 @@ getOptfun(optimizer)
 optimizer function
 }
 \description{
-Get the optimizer function and check it minimally
+Get the optimizer function and perform minimal checks
 Internal utility, only used in \link{optwrapCens}
 }
 \seealso{

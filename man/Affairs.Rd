@@ -4,7 +4,9 @@
 \name{Affairs}
 \alias{Affairs}
 \title{Fair's Extramartial Affairs Data.}
-\format{An object of class \code{data.frame} with 601 rows and 11 columns.}
+\format{
+An object of class \code{data.frame} with 601 rows and 11 columns.
+}
 \source{
 AER package
 }

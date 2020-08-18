@@ -8,5 +8,6 @@ The censoring information is encoded via **survival**'s `Surv`-object that allow
 The random effect structure is currently limited to the most simple case, namely models with a single random intercept.
 Model fitting is via maximum likelihood (`ML`), residual maximum likelihood (`REML`) is not supported.
 
-A good choice of starting values is helpful, although there is a heuristic in place if none are given. 
+A good choice of starting values is helpful, although there is a heuristic in place if none are given.
+The fitted parameter values may depend on the choice of starting values.
 As with all non-trivial optimization problems it is good practice to check convergence with different start values.
