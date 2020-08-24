@@ -106,6 +106,11 @@ predict.lmercens <- function(obj, newdata = NULL, re.form = NULL){
 
 
 #' @export
+fitted.lmercens <- function(obj){
+  predict.lmercens(obj)
+}
+
+#' @export
 residuals.lmercens <- function(obj){
   stopifnot( inherits(obj, what = "lmercens") )
 
