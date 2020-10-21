@@ -4,7 +4,7 @@
 #' This implements the objective function -- i.e. the negative log-likelihood -- for simple scalar random effect models with censoring.
 #' It is implemented in R. The variance parameters and the fixed effect parameter are not profiled out of the log-likelihood
 #' because of the censoring.
-#' The variance parameters are on log-scale (as to avoid a constrained optimization that variances are non-negative).
+#' The variance parameters are on log-scale (as to avoid *constrained* optimization).
 #' It uses ML, REML currently not implemented.
 #'
 #' @param fr model frame with response variable in its first column
@@ -423,6 +423,7 @@ lmercens <- function(formula, data = NULL, REML = FALSE, control = lme4::lmerCon
 #' @return Hessian matrix at MLE for fixed-effect coefficients
 estimHessian <- function(opt, thetaParInd){
 
+  stopifnot( is.numeric(opt$par) )
   coef_theta <- opt$par[thetaParInd]
   coef_fixef <- opt$par[-thetaParInd]
 
@@ -539,7 +540,7 @@ lmercens.fit <- function(lmod, start = NULL, verbose = 0L, control = lme4::lmerC
   opt <- if (length(control$optimizer) == 0L) {
     #stop("start values are required if no optimization")
     #s <- getStart(start, environment(devfun)$lower, environment(devfun)$pp)
-    list(par = start, fixef = start[["fixef"]], fval = devfun(start), conv = 1000, message = "no optimization", negLogLikFun = devfun)
+    list(par = unlist(start), fixef = start[["fixef"]], fval = devfun(unlist(start)), conv = 1000, message = "no optimization", negLogLikFun = devfun)
   } else {
     # delegate optimization
     optimizeLmerCens(devfun, optimizer = control$optimizer, restart_edge = control$restart_edge,
