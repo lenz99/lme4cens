@@ -8,6 +8,8 @@ estimHessian(opt, thetaParInd)
 }
 \arguments{
 \item{opt}{optimization result}
+
+\item{thetaParInd}{indeces for variance components (theta) in parameter vector}
 }
 \value{
 Hessian matrix at MLE for fixed-effect coefficients

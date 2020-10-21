@@ -138,7 +138,7 @@ summary.lmercens <- function(obj){
   tval <- est / stdError
   ans$coefs <- cbind(Estimate = est, `Std. Error` = stdError,
                  `z value` = tval,
-                 `Pr(>|z|)` = 2 * pnorm(abs(tval), lower.tail = FALSE))
+                 `Pr(>|z|)` = 2L * pnorm(abs(tval), lower.tail = FALSE))
 
   class(ans) <- "summary.lmercens"
 

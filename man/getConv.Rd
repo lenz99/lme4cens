@@ -10,5 +10,5 @@ getConv(x)
 internal helper function
 }
 \seealso{
-copy from \link[lme4:::getConv]{lme4::::getConv}
+\code{lme4}'s internal \code{getConv()} function
 }

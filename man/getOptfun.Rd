@@ -18,5 +18,5 @@ Get the optimizer function and perform minimal checks
 Internal utility, only used in \link{optwrapCens}
 }
 \seealso{
-\link[lme4:optwrap]{lme4::optwrap}
+\code{lme4}'s internal \code{optwrap} function.
 }

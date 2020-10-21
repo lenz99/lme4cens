@@ -11,3 +11,10 @@ Model fitting is via maximum likelihood (`ML`), residual maximum likelihood (`RE
 A good choice of starting values is helpful, although there is a heuristic in place if none are given.
 The fitted parameter values may depend on the choice of starting values.
 As with all non-trivial optimization problems it is good practice to check convergence with different start values.
+
+## Installation
+This package is currently only available via Github. To install from within R use the following command:
+
+```
+remotes::install_github("lenz99-/lme4cens")
+```

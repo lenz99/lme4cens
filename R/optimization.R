@@ -1,10 +1,8 @@
-# mkuhn, 2017-10-16
-# optimization stuff
-
+# mkuhn, 2017-10-16, optimization stuff
 
 #' Optimization function for linear mixed models with censoring.
 #'
-#' @seealso [lme4::optimizeLmer]
+#' @seealso [lme4::optimizeLmer()]
 #' @param devfun a deviance function
 #' @return Results of an optimization.
 #' @export
@@ -73,7 +71,7 @@ optimizeLmerCens <- function(devfun,
 #' Internal utility, only used in [optwrapCens]
 #' @param optimizer character string ( = function name) *or* function
 #' @return optimizer function
-#' @seealso [lme4::optwrap]
+#' @seealso `lme4`'s internal `optwrap` function.
 getOptfun <- function(optimizer) {
   optfun <-
     if (((is.character(optimizer) && optimizer == "optimx") ||
@@ -100,10 +98,10 @@ getOptfun <- function(optimizer) {
 
 #' optwrap for censored responses.
 #'
-#' Started as a copy of [lme4:::optwrap]
+#' Started as a copy of `lme4`'s `optwrap()` function.
 #' but adapted to the censoring situation (e.g. optimization is for all parameters) and removed some options.
 #' @param optimizer specifies optimization method, either directly as function object or as function name (as character)
-#' @seealso [lme4::optwrap]
+#' @seealso `lme4`'s `optwrap()` function
 optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
                         control = list(), calc.derivs = TRUE,
                         verbose = 0L)
@@ -203,7 +201,7 @@ optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
 #' get convergence status
 #'
 #' internal helper function
-#' @seealso copy from [lme4:::getConv]
+#' @seealso `lme4`'s internal `getConv()` function
 getConv <- function(x) {
   if (!is.null(x[["conv"]])) {
     x[["conv"]]

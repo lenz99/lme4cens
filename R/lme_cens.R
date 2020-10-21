@@ -420,10 +420,13 @@ lmercens <- function(formula, data = NULL, REML = FALSE, control = lme4::lmerCon
 
 #' Estimate ('observed') Hessian matrix at MLE
 #' @param opt optimization result
+#' @param thetaParInd indeces for variance components (theta) in parameter vector
 #' @return Hessian matrix at MLE for fixed-effect coefficients
 estimHessian <- function(opt, thetaParInd){
 
+  # check: opt$par is a numeric vector (not a list)
   stopifnot( is.numeric(opt$par) )
+
   coef_theta <- opt$par[thetaParInd]
   coef_fixef <- opt$par[-thetaParInd]
 
@@ -434,7 +437,13 @@ estimHessian <- function(opt, thetaParInd){
 
   optderivs <- attr(opt, "derivs")
   # case-insensitive matching for Hessian-component
-  myHess <- unlist(optderivs[grepl("[hH]ess", names(optderivs))])
+  myHess <- optderivs[grepl("[hH]ess", names(optderivs))]
+  if (length(myHess) >= 1L) myHess <- myHess[[1L]] #unpack matrix from list
+
+  if ( is.matrix(myHess) ){
+    stopifnot( NCOL(myHess) >= length(coef_fixef) )
+    if (NCOL(myHess) == length(opt$par)) myHess <- myHess[-thetaParInd, -thetaParInd, drop = FALSE]
+  }
   # use numeric 2nd derivative at ('observed') MLE if not provided by optimization routine
   if ( is.null(myHess)) {
 

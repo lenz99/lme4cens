@@ -38,6 +38,6 @@ objective function which maps the parameters to the corresponding negative log-l
 This implements the objective function -- i.e. the negative log-likelihood -- for simple scalar random effect models with censoring.
 It is implemented in R. The variance parameters and the fixed effect parameter are not profiled out of the log-likelihood
 because of the censoring.
-The variance parameters are on log-scale (as to avoid a constrained optimization that variances are non-negative).
+The variance parameters are on log-scale (as to avoid \emph{constrained} optimization).
 It uses ML, REML currently not implemented.
 }

@@ -19,9 +19,9 @@ optwrapCens(
 \item{optimizer}{specifies optimization method, either directly as function object or as function name (as character)}
 }
 \description{
-Started as a copy of \link[lme4:::optwrap]{lme4::::optwrap}
+Started as a copy of \code{lme4}'s \code{optwrap()} function.
 but adapted to the censoring situation (e.g. optimization is for all parameters) and removed some options.
 }
 \seealso{
-\link[lme4:optwrap]{lme4::optwrap}
+\code{lme4}'s \code{optwrap()} function
 }
