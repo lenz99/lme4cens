@@ -62,7 +62,7 @@ ranef.lmercens <- function(obj){
   respMatrix <- as.matrix(obj$ingredients$fr[[1L]])
   stopifnot( "status" %in% colnames(respMatrix) )
   obsInd <- respMatrix[,"status", drop=TRUE] == 1L  ## eventually could use also interval-censored (=> take mean of interval)
-  fixef_resids <-  respMatrix[obsInd, 1L, drop=FALSE] - obj$ingredients$X[obsInd,] %*% fixef(obj)
+  fixef_resids <- respMatrix[obsInd, 1L, drop=FALSE] - obj$ingredients$X[obsInd,, drop=FALSE] %*% fixef(obj)
 
   # cf. Demidenko, section 3.7
   Zt <- obj$ingredients$reTrms$Zt
