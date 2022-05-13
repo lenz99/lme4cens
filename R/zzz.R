@@ -24,81 +24,82 @@ survival::Surv
 # add some S3-convenience functions for q&d lmercens
 
 #' @export
-print.lmercens <- function(obj){
+print.lmercens <- function(x, ...){
   cat("Linear Mixed Model with Censored Observations\n")
 
-  cat("\nCall:\n", paste(deparse(obj$call), sep = "\n", collapse = "\n"),
+  cat("\nCall:\n", paste(deparse(x$call), sep = "\n", collapse = "\n"),
       "\n\n", sep = "")
-  cat("\nCoefficients:\nFixed coefs: ", fixef.lmercens(obj))
-  cat("\nRandom effect coefs: log(S_betw) = ", log(sigma(obj, which = "between")),
-      "\t log(S_within) = ", log(sigma(obj, which = "residual")), "\n")
+  cat("\nCoefficients:\nFixed coefs: ", fixef.lmercens(x))
+  cat("\nRandom effect coefs: log(S_betw) = ", log(sigma(x, which = "between")),
+      "\t log(S_within) = ", log(sigma(x, which = "residual")), "\n")
 }
 
 #' Extract variance estimates on standard-deviation scale
 #' @param which which type of variance estimate
 #' @export
-sigma.lmercens <- function(obj, which = c("residual", "between"), ...){
+sigma.lmercens <- function(object, which = c("residual", "between"), ...){
   which <- match.arg(which)
 
   switch(which,
-          between  = exp(obj$par[[1L]]),
+          between  = exp(object$par[[1L]]),
           residual = ,
-          exp(obj$par[[2L]])
+          exp(object$par[[2L]])
   )
 }
 
 
+#' Fixed effect coefficient estimates.
 #' @export
-fixef.lmercens <- function(obj){
-  setNames(obj$fixef, nm = colnames(obj$ingredients$X))
+fixef.lmercens <- function(object, ...){
+  stats::setNames(object$fixef, nm = colnames(object$ingredients$X))
 }
 
 #' Random effect predictions for the random intercept.
 #' @export
-ranef.lmercens <- function(obj){
-  stopifnot( inherits(obj, what = "lmercens") )
+ranef.lmercens <- function(object, ...){
+  stopifnot( inherits(object, what = "lmercens") )
 
   # use only observed cases
-  respMatrix <- as.matrix(obj$ingredients$fr[[1L]])
+  respMatrix <- as.matrix(object$ingredients$fr[[1L]])
   stopifnot( "status" %in% colnames(respMatrix) )
   obsInd <- respMatrix[,"status", drop=TRUE] == 1L  ## eventually could use also interval-censored (=> take mean of interval)
-  fixef_resids <- respMatrix[obsInd, 1L, drop=FALSE] - obj$ingredients$X[obsInd,, drop=FALSE] %*% fixef(obj)
+  fixef_resids <- respMatrix[obsInd, 1L, drop=FALSE] - object$ingredients$X[obsInd,, drop=FALSE] %*% fixef.lmercens(object)
 
   # cf. Demidenko, section 3.7
-  Zt <- obj$ingredients$reTrms$Zt
-  D <- diag(exp(2 * (obj$par[[1L]] - obj$par[[2L]])), nrow = NROW(Zt))
+  Zt <- object$ingredients$reTrms$Zt
+  D <- diag(exp(2 * (object$par[[1L]] - object$par[[2L]])), nrow = NROW(Zt))
 
   # with random intercept only, it is enough to give out a vector (not a named list)
   setNames(as.numeric(D %*% Matrix::solve(a = diag(1, nrow = NROW(Zt)) + Matrix::tcrossprod(Zt) %*% D,
                                           b = Zt[, obsInd] %*% (fixef_resids))),
-           nm = levels(obj$ingredients$reTrms$flist[[1]]))
+           nm = levels(object$ingredients$reTrms$flist[[1]]))
 }
 
 #' Predict method for `lmercens` objects.
 #'
-#' @param obj `lmercens` model object
+#' @param object `lmercens` model object
 #' @param newdata dataframe with covariate values for prediction. Default is `NULL` which is to fall back to the training data.
 #' @param re.form right-side formula for random effects to condition on in case of prediction on training data. If `NULL`, include all random effects; if `~0` or `NA`, include no random effects.
 #' @export
-predict.lmercens <- function(obj, newdata = NULL, re.form = NULL){
-  stopifnot( inherits(obj, what = "lmercens") )
+predict.lmercens <- function(object, newdata = NULL, re.form = NULL, ...){
+  stopifnot( inherits(object, what = "lmercens") )
 
   ret <- NULL
 
   if ( is.null(newdata) ){ # use training data itself for predictions
 
-    ret <- obj$ingredients$X %*% fixef(obj)
+    ret <- object$ingredients$X %*% fixef.lmercens(object)
 
     if ( is.null(re.form) || re.form == ~1 ){ ##!isTRUE(is.na(re.form)) && !re.form == ~0 ){
       # expect simple random effects model (only a single random intercept)
-      stopifnot( length(obj$ingredients$reTrms$cnms) == 1L && obj$ingredients$reTrms$cnms[[1L]] == '(Intercept)' )
+      stopifnot( length(object$ingredients$reTrms$cnms) == 1L && object$ingredients$reTrms$cnms[[1L]] == '(Intercept)' )
 
-      ret <- ret + Matrix::crossprod(obj$ingredients$reTrms$Zt, y = ranef(obj))
+      ret <- ret + Matrix::crossprod(object$ingredients$reTrms$Zt, y = ranef(object))
     }
 
   } else { # new data used without random effect BLUPs
-    X <- model.matrix(lme4:::getFixedFormula(obj$call$formula[-2]), data = newdata[,-1])
-    ret <- X %*% fixef(obj)
+    X <- model.matrix(lme4:::getFixedFormula(object$call$formula[-2]), data = newdata[,-1])
+    ret <- X %*% fixef.lmercens(object)
   }
 
   as.vector(ret)
@@ -106,16 +107,16 @@ predict.lmercens <- function(obj, newdata = NULL, re.form = NULL){
 
 
 #' @export
-fitted.lmercens <- function(obj){
-  predict.lmercens(obj)
+fitted.lmercens <- function(object, ...){
+  predict.lmercens(object, ...)
 }
 
 #' @export
-residuals.lmercens <- function(obj){
-  stopifnot( inherits(obj, what = "lmercens") )
+residuals.lmercens <- function(object, ...){
+  stopifnot( inherits(object, what = "lmercens") )
 
-  y_pred <- predict(obj)
-  y_obs  <- as.matrix(obj$ingredients$fr[[1L]])
+  y_pred <- predict(object)
+  y_obs  <- as.matrix(object$ingredients$fr[[1L]])
   y_obs_status <- y_obs[, "status"]
 
   # NA as default (for all censored outcomes)
@@ -127,14 +128,14 @@ residuals.lmercens <- function(obj){
 }
 
 #' @export
-summary.lmercens <- function(obj){
-  if (!inherits(obj, "lmercens")) warning("calling summary.lmercens(<fake-lmercens-object>) ...")
-  ans <- obj[c("call", "ingredients", "fval")]
-  ans$sigmas <- c(between = as.numeric(sigma(obj, which = "between")),
-                  residual = as.numeric(sigma(obj, which = "residual")))
+summary.lmercens <- function(object, ...){
+  if (!inherits(object, "lmercens")) warning("calling summary.lmercens(<fake-lmercens-object>) ...")
+  ans <- object[c("call", "ingredients", "fval")]
+  ans$sigmas <- c(between = as.numeric(sigma(object, which = "between")),
+                  residual = as.numeric(sigma(object, which = "residual")))
 
-  est <- fixef(obj)
-  stdError <- sqrt(diag(vcov(obj)))
+  est <- fixef(object)
+  stdError <- sqrt(diag(vcov(object)))
   tval <- est / stdError
   ans$coefs <- cbind(Estimate = est, `Std. Error` = stdError,
                  `z value` = tval,
@@ -146,33 +147,33 @@ summary.lmercens <- function(obj){
 }
 
 #' @export
-print.summary.lmercens <- function(obj, ...) {
+print.summary.lmercens <- function(x, ...) {
   cat("Linear Mixed Model with Censored Observations\n")
 
-  cat("\nCall:\n", paste(deparse(obj$call), sep = "\n", collapse = "\n"),
+  cat("\nCall:\n", paste(deparse(x$call), sep = "\n", collapse = "\n"),
       "\n\n", sep = "")
   cat("\nCoefficients:\nFixed coefs:\n ")
-  coefs <- obj$coefs
+  coefs <- x$coefs
   stats::printCoefmat(coefs, ...)
   cat("\nRandom effects:\n")
-  cat("S_betw = ", obj$sigmas["between"], "\t S_within = ", obj$sigmas["residual"], "\n")
-  cat("Log-likelihood: ", round(-obj$fval, 2), "\n")
+  cat("S_betw = ", x$sigmas["between"], "\t S_within = ", x$sigmas["residual"], "\n")
+  cat("Log-likelihood: ", round(-x$fval, 2), "\n")
 }
 
 #' Variance-covariance matrix for fixed effect coefficients.
 #' It uses the observed Fisher information matrix at the ML parameter estimate.
 #' Therefore, it is only useful asymptotically.
-#' @param obj a fitted `lmercens`-object
+#' @param object a fitted `lmercens`-object
 #' @return estimated variance-covariance matrix for fixed effect coefficients
 #' @export
-vcov.lmercens <- function(obj, ...){
-  stopifnot( inherits(obj, what = "lmercens") )
+vcov.lmercens <- function(object, ...){
+  stopifnot( inherits(object, what = "lmercens") )
 
   retMat <- NULL
 
-  if (!is.null(obj$hess) && is.matrix(obj$hess) && isSymmetric(obj$hess)){
-    retMat <- solve(obj$hess)
-    dimnames(retMat) <- list(colnames(obj$ingredients$X), colnames(obj$ingredients$X))
+  if (!is.null(object$hess) && is.matrix(object$hess) && isSymmetric(object$hess)){
+    retMat <- solve(object$hess)
+    dimnames(retMat) <- list(colnames(object$ingredients$X), colnames(object$ingredients$X))
   }
 
   retMat
@@ -180,12 +181,12 @@ vcov.lmercens <- function(obj, ...){
 
 
 #' @export
-confint.lmercens <- function(obj, parm, level = 0.95, ...){
-  stopifnot( inherits(obj, "lmercens"), is.numeric(level), level > 0L, level < 1L )
+confint.lmercens <- function(object, parm, level = 0.95, ...){
+  stopifnot( inherits(object, "lmercens"), is.numeric(level), level > 0L, level < 1L )
 
-  cf <- fixef(obj)
+  cf <- fixef(object)
   pnames <- names(cf)
-  ses <- sqrt(diag(vcov(obj)))
+  ses <- sqrt(diag(vcov(object)))
 
   if (missing(parm)) parm <- pnames else if (is.numeric(parm)) parm <- pnames[parm]
 

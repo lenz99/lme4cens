@@ -1,7 +1,7 @@
 ---
 title: "Linear Models with Censoring Examples"
-author: "MK"
-date: "2017-02-27, `r Sys.Date()`"
+author: "Matthias Kuhn"
+date: "2017-02-27, last update: `r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -13,20 +13,19 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
-library(dplyr)
+library('dplyr')
 
-devtools::dev_mode(on = TRUE)
 ## knitr package options
 knitr::opts_knit$set(verbose = FALSE)
 options(digits = 3L)
 
-library(survival)
+library('survival')
 
-library(lme4cens)
-library(microbenchmark)
+library('lme4cens')
+library('microbenchmark')
 
-library(censReg)
-library(crch)
+library('censReg')
+library('crch')
 
 data("Affairs", package = "lme4cens")
 
@@ -47,7 +46,7 @@ set.seed(123L)
 N <- 230L
 λ <- 1.8
 
-ex_exp_lCens <- tibble(
+ex_exp_lCens <- dplyr::tibble(
   X = rweibull(n = N, shape = 1L, scale = 1/λ),
   # censoring with shorter mean time than for response X
   Cl = rweibull(n = N, shape = 1.2, scale = 1/λ-.3), 

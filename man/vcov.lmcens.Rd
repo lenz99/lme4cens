@@ -4,7 +4,7 @@
 \alias{vcov.lmcens}
 \title{Variance covariance function for \link{lmcens}-models.}
 \usage{
-\method{vcov}{lmcens}(obj)
+\method{vcov}{lmcens}(object, ...)
 }
 \value{
 asymptotic variance-covariance matrix for the parameters, including residual std error as last parameter

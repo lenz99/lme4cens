@@ -1,2 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^LICENSE\.md$
+
+^inst/lit$
+^inst/internal$
+^inst/pres$

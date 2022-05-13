@@ -4,7 +4,7 @@
 \alias{ranef.lmercens}
 \title{Random effect predictions for the random intercept.}
 \usage{
-\method{ranef}{lmercens}(obj)
+\method{ranef}{lmercens}(object, ...)
 }
 \description{
 Random effect predictions for the random intercept.

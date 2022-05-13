@@ -6,10 +6,10 @@
 It uses the observed Fisher information matrix at the ML parameter estimate.
 Therefore, it is only useful asymptotically.}
 \usage{
-\method{vcov}{lmercens}(obj, ...)
+\method{vcov}{lmercens}(object, ...)
 }
 \arguments{
-\item{obj}{a fitted \code{lmercens}-object}
+\item{object}{a fitted \code{lmercens}-object}
 }
 \value{
 estimated variance-covariance matrix for fixed effect coefficients

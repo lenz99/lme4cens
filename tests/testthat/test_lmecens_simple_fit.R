@@ -1,7 +1,6 @@
 
-
-library(survival)
-library(optimx)
+library('survival')
+library('optimx')
 
 context("Simple linear mixed models with censoring: model fitting")
 

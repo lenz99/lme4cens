@@ -1,7 +1,7 @@
 ---
 title: "Numerical Integration"
-author: "MK"
-date: "2017-03-10, `r Sys.Date()`"
+author: "Matthias Kuhn"
+date: "2017-03-10, last update: `r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Numerical Integration}
@@ -15,10 +15,9 @@ Here, we look at some examples of integration and compare different methods of i
 
 ```{r init, message=FALSE, echo=FALSE}
 params <- list(benchmark=FALSE)
-devtools::dev_mode(on = TRUE)
 
-library(lme4cens)
-library(microbenchmark)
+library('lme4cens')
+library('microbenchmark')
 ```
 
 We `r if (isTRUE(params$benchmark)) "do " else "skip "` microtiming-benchmarks this time.

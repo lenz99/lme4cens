@@ -4,10 +4,10 @@
 \alias{predict.lmercens}
 \title{Predict method for \code{lmercens} objects.}
 \usage{
-\method{predict}{lmercens}(obj, newdata = NULL, re.form = NULL)
+\method{predict}{lmercens}(object, newdata = NULL, re.form = NULL, ...)
 }
 \arguments{
-\item{obj}{\code{lmercens} model object}
+\item{object}{\code{lmercens} model object}
 
 \item{newdata}{dataframe with covariate values for prediction. Default is \code{NULL} which is to fall back to the training data.}
 

@@ -4,7 +4,7 @@
 \alias{sigma.lmercens}
 \title{Extract variance estimates on standard-deviation scale}
 \usage{
-\method{sigma}{lmercens}(obj, which = c("residual", "between"), ...)
+\method{sigma}{lmercens}(object, which = c("residual", "between"), ...)
 }
 \arguments{
 \item{which}{which type of variance estimate}

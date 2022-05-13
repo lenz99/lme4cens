@@ -243,7 +243,7 @@ lmcens.objFun <- function(x, yTime1, yTime2, yStat, w, offset){
 
 
 #' @export
-summary.lmcens <- function(object){
+summary.lmcens <- function(object, ...){
   z <- object
 
   lSigmaCoef <- z$coefficients[length(z$coefficients)]
@@ -290,7 +290,7 @@ print.summary.lmcens <- function(x, digits = max(3L, getOption("digits") - 3L), 
 }
 
 #' @export
-logLik.lmcens <- function(obj) obj$logLik
+logLik.lmcens <- function(object, ...) object$logLik
 
 
 #' Variance covariance function for [lmcens]-models.
@@ -298,4 +298,4 @@ logLik.lmcens <- function(obj) obj$logLik
 #' Includes the residual standard error as own parameter
 #' @return asymptotic variance-covariance matrix for the parameters, including residual std error as last parameter
 #' @export
-vcov.lmcens <- function(obj) solve(obj$hess)
+vcov.lmcens <- function(object, ...) solve(object$hess)

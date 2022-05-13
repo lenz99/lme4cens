@@ -1,7 +1,7 @@
 ---
 title: "Linear Mixed Models with Censoring Examples"
-author: "MK"
-date: "2017-02-27, `r Sys.Date()`"
+author: "Matthias Kuhn"
+date: "2017-02-27, last update: `r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Linear Mixed Models with Censoring Examples}
@@ -12,22 +12,21 @@ vignette: >
 
 ```{r setup, include=FALSE, message=FALSE}
 
-library(dplyr)
-library(knitr)
+library('dplyr')
+library('knitr')
 
 ## knitr package options
 knitr::opts_knit$set(verbose = FALSE)
 options(digits = 5L)
 
-library(survival)
+library('survival')
 
-library(microbenchmark)
+library('microbenchmark')
 
-library(censReg)
-library(crch)
+library('censReg')
+library('crch')
 
-#devtools::dev_mode(on = TRUE)
-library(lme4cens)
+library('lme4cens')
 
 
 data("sleepstudy2", package = "lme4cens")
@@ -188,11 +187,11 @@ ll_censRegOnUs <- censReg::censReg(Reaction3 ~ as.numeric(Days), left = REACT_L3
 
 
 ```{r ex2_sleepstudy2_LL_optimLmercens, echo = FALSE, results='asis'}
-tibble::tibble(source = c(paste("Subject", levels(sleepstudy2$Subject)), "total"), 
+dplyr::tibble(source = c(paste("Subject", levels(sleepstudy2$Subject)), "total"), 
                censReg = c(as.numeric(ll_censRegOnUs), sum(ll_censRegOnUs)),
                lmercens = c(log(attr(ll_usOnUs, which = "lik.contribs")), -ll_usOnUs),
-               `Δ~lmercens-censReg~` = lmercens - censReg,
-) %>% knitr::kable(caption = "Log-likelihood contributions at __lmercens__'s optimal values on sleepstudy2-data")
+               `Δ~lmercens-censReg~` = lmercens - censReg) %>%
+  knitr::kable(caption = "Log-likelihood contributions at __lmercens__'s optimal values on sleepstudy2-data")
 ```
 
 The log-likelihood contributions of all subjects as estimated by `lmercens` are consistantly bigger (less negative) than by `censReg`.
@@ -200,16 +199,10 @@ The log-likelihood contributions of all subjects as estimated by `lmercens` are 
 
 
 ### Comparison with `survreg`
-`survreg` has basic support for random effects, using the `frailty()` within the formula.
-Here, we use Gaussian frailty with the default `reml`-method although
-in the help-page to `frailty` the authors issue a warning that frailty in parametric models `survreg` the combinations `gamma/ml` and `gaussian/reml` do _not_ lead to correct results.
+The function `survreg` does not support for random effects,
+although a `frailty()` term within the formula used to work (until `survival` version 3.2-8).
+But, also before it did not work properly, citing from the `NEWS`-file of package `survival`:
 
+> it is integrating out the appropriate density for a coxph model, which is the wrong one for `survreg`
 
-```{r ex2_sleepstudy2_survreg}
-fm.survreg <- survreg(
-  Surv(Reaction3, time2 = Reaction3, event = event3, type = "interval") ~ Days + frailty(Subject, distribution = "gaussian"),
-  dist = "gaussian", data = sleepstudy2)
-
-summary(fm.survreg)
-```
 

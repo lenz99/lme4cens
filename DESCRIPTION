@@ -1,24 +1,25 @@
 Package: lme4cens
 Type: Package
 Title: Simple Linear Mixed Effect Models for Censored Data
-Version: 0.1.13
+Version: 0.1.14
 Author: Matthias Kuhn
 Maintainer: Matthias Kuhn <matthias.kuhn@tu-dresden.de>
 Description: Simple Linear Mixed Effect Models that cope with censored data.
     It uses the formula interface of lme4. As a response variable you can use survival's Surv-objects.
-License: GPL-3
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: 
-    dplyr,
     optimx,
-    parallel,
+    stats,
     survival
 Depends: R (>= 3.6.0), lme4 (>= 1.1.12)
 Suggests:
+    dplyr,
     knitr,
+    parallel,
     rmarkdown,
     testthat
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2

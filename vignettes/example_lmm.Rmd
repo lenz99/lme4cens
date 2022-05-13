@@ -1,14 +1,14 @@
 ---
 title: "Example analyses of simple linear mixed models"
-author: "MK"
-date: "`r Sys.Date()`"
+author: "Matthias Kuhn"
+date: "2017-02-27, last update: `r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
     fig_caption: yes
     toc: true
     df_print: kable
 vignette: >
-  %\VignetteIndexEntry{Example analysis of simple linear mixed models}
+  %\VignetteIndexEntry{Example analyses of simple linear mixed models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,10 +19,9 @@ knitr::opts_knit$set(verbose = FALSE)
 options(digits = 3L)
 
 
-library(dplyr)
-devtools::dev_mode(on = TRUE)
+library('dplyr')
 
-library(lme4cens)
+library('lme4cens')
 
 data("sleepstudy2", package = "lme4cens")
 data("Pastes", package = "lme4")
@@ -36,7 +35,7 @@ DO_REML <- FALSE
 We test our linear mixed model R-routines with some small examples and compare the fit with the fit of the official `lme4` implementation.
 We use a subset of the infamous `sleepstudy`-data to fit simple linear mixed models.
 
-Throughout, we use `r if (DO_REML) "__REML__" else "__ML__"` for model fitting.
+Throughout, we use the `r if (DO_REML) "__REML__" else "__ML__"`-method for model fitting.
 
 If no censoring occurs, the optimization function (e.g. log-likelihood for ML) is parameterized by
 the variance parameters θ for the random effects.
