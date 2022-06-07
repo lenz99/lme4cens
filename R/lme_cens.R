@@ -544,7 +544,7 @@ lmercens.fit <- function(lmod, start = NULL, verbose = 0L, control = lme4::lmerC
 
   # optimization -----
   if (identical(control$optimizer, "none"))
-    stop("deprecated use of optimizer='none'; use NULL instead")
+    stop("deprecated use of optimizer='none'; use NULL instead", call. = FALSE)
 
   opt <- if (length(control$optimizer) == 0L) {
     #stop("start values are required if no optimization")

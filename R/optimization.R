@@ -144,7 +144,7 @@ optwrapCens <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
   ## used in lme4 to specify REML vs ML
   if (optName == "optimx") {
     if (is.null(method <- control$method))
-      stop("must specify 'method' explicitly for optimx")
+      stop("must specify 'method' explicitly for optimx", call. = FALSE)
     arglist$control$method <- NULL
 
     # mkuhn, add gradient for optimx (if available)

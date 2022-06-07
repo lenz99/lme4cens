@@ -75,6 +75,16 @@ ranef.lmercens <- function(object, ...){
            nm = levels(object$ingredients$reTrms$flist[[1]]))
 }
 
+#' @export
+logLik.lmercens <- function(object, ...){
+  myNobs <- NROW(object$ingredients$X)
+  structure(-object$fval,
+            nobs = myNobs,
+            nall = myNobs,
+            df = length(object$par),
+            class = 'logLik')
+}
+
 #' Predict method for `lmercens` objects.
 #'
 #' @param object `lmercens` model object
@@ -129,22 +139,25 @@ residuals.lmercens <- function(object, ...){
 
 #' @export
 summary.lmercens <- function(object, ...){
-  if (!inherits(object, "lmercens")) warning("calling summary.lmercens(<fake-lmercens-object>) ...")
-  ans <- object[c("call", "ingredients", "fval")]
+  if (!inherits(object, "lmercens")) warning("calling summary.lmercens with fake lmercens-object!", call. = FALSE)
+  ans <- object[c("call", "ingredients")]
   ans$sigmas <- c(between = as.numeric(sigma(object, which = "between")),
                   residual = as.numeric(sigma(object, which = "residual")))
+  ans$logLik <- logLik(object, ...)
 
   est <- fixef(object)
   stdError <- sqrt(diag(vcov(object)))
   tval <- est / stdError
-  ans$coefs <- cbind(Estimate = est, `Std. Error` = stdError,
-                 `z value` = tval,
-                 `Pr(>|z|)` = 2L * pnorm(abs(tval), lower.tail = FALSE))
+  ans$coefs <- cbind(Estimate = est,
+                     `Std. Error` = stdError,
+                     `z value` = tval,
+                     `Pr(>|z|)` = 2L * pnorm(abs(tval), lower.tail = FALSE))
 
   class(ans) <- "summary.lmercens"
 
   ans
 }
+
 
 #' @export
 print.summary.lmercens <- function(x, ...) {
@@ -157,7 +170,7 @@ print.summary.lmercens <- function(x, ...) {
   stats::printCoefmat(coefs, ...)
   cat("\nRandom effects:\n")
   cat("S_betw = ", x$sigmas["between"], "\t S_within = ", x$sigmas["residual"], "\n")
-  cat("Log-likelihood: ", round(-x$fval, 2), "\n")
+  cat("Log-likelihood: ", round(as.numeric(x$logLik), 2L), "\n")
 }
 
 #' Variance-covariance matrix for fixed effect coefficients.

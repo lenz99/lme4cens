@@ -43,7 +43,7 @@ paramSL <- list(theta = c(3, 2), fixef = c(260, 5))
 
 ## Mixed Linear Models with censored observations
 
-The function `lmercens` is modeled after `lme4`'s `lmer` function.
+The function `lmercens` is modelled after `lme4`'s `lmer` function.
 One can specify directly own start values. Otherwise, `lmercens` chooses start values based on a `lmer` fit where censored data had been imputed.
 
 
