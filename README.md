@@ -16,5 +16,5 @@ As with all non-trivial optimization problems it is good practice to check conve
 This package is currently only available via Github. To install from within R use the following command:
 
 ```
-remotes::install_github("lenz99-/lme4cens")
+remotes::install_github("lenz99/lme4cens")
 ```
